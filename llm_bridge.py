@@ -39,12 +39,17 @@ from typing import Any
 # Config
 # ---------------------------------------------------------------------------
 
+# Legacy self-host fallback path for the API key file. The OPENROUTER_API_KEY
+# env var takes precedence; this file is only consulted when it is unset.
+LEGACY_KEY_FILE = "/home/enigma/.kinox/env"
+
+
 def _resolve_api_key() -> str:
-    """Get OPENROUTER_API_KEY from env, falling back to /home/enigma/.kinox/env."""
+    """Get OPENROUTER_API_KEY from env, falling back to the legacy key file."""
     key = os.environ.get("OPENROUTER_API_KEY", "")
     if key:
         return key
-    kinox = "/home/enigma/.kinox/env"
+    kinox = LEGACY_KEY_FILE
     if os.path.isfile(kinox):
         for line in open(kinox):
             if line.startswith("OPENROUTER_API_KEY="):

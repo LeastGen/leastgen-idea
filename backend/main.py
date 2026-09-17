@@ -20,8 +20,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RUN_DIR = PROJECT_ROOT / "ideaspark_run"
 RUN_DIR.mkdir(exist_ok=True)
 
-# ── Load env from .kinox/env ────────────────────────────────────────────────
-_KINOX_ENV = Path("/home/enigma/.kinox/env")
+# ── Load env from the legacy self-host key file ─────────────────────────────
+# The environment takes precedence (setdefault below); this file is only a
+# fallback for local self-hosted setups.
+_KINOX_ENV = Path("/home/enigma/.kinox/env")  # legacy self-host fallback path
 if _KINOX_ENV.exists():
     for line in _KINOX_ENV.read_text().splitlines():
         line = line.strip()

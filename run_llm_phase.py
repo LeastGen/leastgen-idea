@@ -121,12 +121,17 @@ PHASE_CONFIG = {
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+# Legacy self-host fallback path for the API key file. The OPENROUTER_API_KEY
+# env var takes precedence; this file is only consulted when it is unset.
+LEGACY_KEY_FILE = Path("/home/enigma/.kinox/env")
+
+
 def get_api_key() -> str:
     """Get OpenRouter API key."""
     key = os.environ.get("OPENROUTER_API_KEY", "")
     if key:
         return key
-    kinox = Path("/home/enigma/.kinox/env")
+    kinox = LEGACY_KEY_FILE
     if kinox.exists():
         for line in kinox.read_text().splitlines():
             if line.startswith("OPENROUTER_API_KEY="):

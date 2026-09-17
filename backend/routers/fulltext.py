@@ -14,6 +14,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SUB_DIR = PROJECT_ROOT / "researchstudio" / "ResearchStudio-Idea" / "skills" / "idea_spark"
 RUN_DIR = PROJECT_ROOT / "ideaspark_run"
 
+# Legacy self-host fallback path for the API key file. The OPENROUTER_API_KEY
+# env var takes precedence; this file is only consulted when it is unset.
+LEGACY_KEY_FILE = Path("/home/enigma/.kinox/env")
+
 
 class FulltextRequest(BaseModel):
     run_id: str = Field(..., description="Run ID from Phase 0")
@@ -37,7 +41,7 @@ def _env_with_bridge() -> dict[str, str]:
     llm_bridge = str(PROJECT_ROOT / "llm_bridge.py")
     env["NOVELTY_LLM_CLASSIFY_FAST_CMD"] = f"python3 {llm_bridge} --mode classify-fast"
     env["NOVELTY_LLM_REASONING_LARGE_CMD"] = f"python3 {llm_bridge} --mode reasoning-large"
-    kinox = Path("/home/enigma/.kinox/env")
+    kinox = LEGACY_KEY_FILE
     if kinox.exists():
         for line in kinox.read_text().splitlines():
             if line.startswith("OPENROUTER_API_KEY="):

@@ -37,6 +37,10 @@ SKILL_DIR = PROJECT_ROOT / "researchstudio" / "ResearchStudio-Idea" / "skills" /
 
 RUN_DIR.mkdir(exist_ok=True)
 
+# Legacy self-host fallback path for the API key file. The OPENROUTER_API_KEY
+# env var takes precedence; this file is only consulted when it is unset.
+LEGACY_KEY_FILE = Path("/home/enigma/.kinox/env")
+
 # Active pipeline background threads
 _active_workers: dict[str, threading.Thread] = {}
 _worker_lock = threading.Lock()
@@ -93,7 +97,7 @@ def _build_env() -> dict[str, str]:
     env["NOVELTY_LLM_REASONING_LARGE_CMD"] = f"python3 {llm_bridge} --mode reasoning-large"
 
     if "OPENROUTER_API_KEY" not in env or not env["OPENROUTER_API_KEY"]:
-        kinox = Path("/home/enigma/.kinox/env")
+        kinox = LEGACY_KEY_FILE
         if kinox.exists():
             for line in kinox.read_text().splitlines():
                 if line.startswith("OPENROUTER_API_KEY="):
