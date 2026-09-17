@@ -18,6 +18,12 @@ set -uo pipefail
 BASE_URL="${API_BASE_URL:-http://localhost:8756}"
 DRY_RUN=false
 USE_JQ=true
+# NOTE: dummy demo-only credentials for local demo script — not real accounts
+DEMO_EMAIL="${DEMO_EMAIL:-demo@leastgen.com}"
+DEMO_PASS="${DEMO_PASS:-password123}"
+DEMO_NAME="Demo User"
+DEMO_TOKEN=""
+DEMO_UID=""
 
 # ── Colors ─────────────────────────────────────────────────────────────
 RED=$'\033[0;31m'
@@ -64,6 +70,40 @@ pretty_json() {
 }
 
 # ── curl helper ─────────────────────────────────────────────────────────
+# CACHE_AVAILABLE: 1 = server has /api/cache/* (leastgen-hosted), 0 = skip
+CACHE_AVAILABLE=1
+probe_cache() {
+  if [[ "$DRY_RUN" == true ]]; then return 0; fi
+  local code
+  code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/cache/stats" 2>/dev/null) || code="000"
+  if [[ "$code" =~ ^2 ]]; then CACHE_AVAILABLE=1; else CACHE_AVAILABLE=0; fi
+}
+
+skip_cache_note() {
+  warn "SKIP — $BASE_URL has no /api/cache/* routes (think-fast has no cache router)"
+}
+
+# ensure_demo_user: idempotent login-or-signup; sets DEMO_TOKEN/DEMO_UID.
+# Prints nothing on success. Returns 0 with token set, 1 without.
+ensure_demo_user() {
+  if [[ -n "$DEMO_TOKEN" ]]; then return 0; fi
+  local auth_resp
+  auth_resp=$(curl -s -X POST "$BASE_URL/api/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"email\":\"$DEMO_EMAIL\",\"password\":\"$DEMO_PASS\"}" 2>/dev/null)
+  DEMO_TOKEN=$(echo "$auth_resp" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+  if [[ -z "$DEMO_TOKEN" ]]; then
+    auth_resp=$(curl -s -X POST "$BASE_URL/api/auth/signup" \
+      -H "Content-Type: application/json" \
+      -d "{\"email\":\"$DEMO_EMAIL\",\"password\":\"$DEMO_PASS\",\"name\":\"$DEMO_NAME\"}" 2>/dev/null)
+    DEMO_TOKEN=$(echo "$auth_resp" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+  fi
+  if [[ -n "$DEMO_TOKEN" ]]; then
+    DEMO_UID=$(echo "$auth_resp" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+  fi
+  [[ -n "$DEMO_TOKEN" ]]
+}
+
 do_curl() {
   local method="$1" url="$2"
   shift 2
@@ -161,9 +201,15 @@ section_1() {
 }
 
 # ── 2. Cache Stats ────────────────────────────────────────────────────
+# leastgen-hosted only: think-fast has no cache router → section skips cleanly.
 section_2() {
   section "2" "Cache Statistics — GET /api/cache/stats"
 
+  if [[ "$DRY_RUN" == false && "$CACHE_AVAILABLE" == "0" ]]; then
+    skip_cache_note
+    printf '\n'
+    return 0
+  fi
   subtitle "Request"
   cmd_label "curl -s -X GET http://localhost:8756/api/cache/stats"
   do_curl GET "$BASE_URL/api/cache/stats"
@@ -178,9 +224,15 @@ section_2() {
 }
 
 # ── 3. Cache Lookup ───────────────────────────────────────────────────
+# leastgen-hosted only: think-fast has no cache router → section skips cleanly.
 section_3() {
   section "3" "Semantic Cache Lookup — POST /api/cache/lookup"
 
+  if [[ "$DRY_RUN" == false && "$CACHE_AVAILABLE" == "0" ]]; then
+    skip_cache_note
+    printf '\n'
+    return 0
+  fi
   subtitle "Request"
   cmd_label 'curl -s -X POST http://localhost:8756/api/cache/lookup \
     -H "Content-Type: application/json" \
@@ -191,41 +243,60 @@ section_3() {
 
   subtitle "What you get"
   info "Returns a cached match if semantic similarity exceeds the threshold:"
-  printf '  {"hit":true,"cached_response":"...","similarity":0.94,"tokens_saved":1200}\n'
+  printf '  {"found":true,"source":"semantic_cache","similarity":0.94,"response":"...","phase":null}\n'
+  printf '  (miss → {"found":false})\n'
   printf '\n'
 }
 
 # ── 4. Cache Store ────────────────────────────────────────────────────
+# leastgen-hosted only: think-fast has no cache router → section skips cleanly.
 section_4() {
   section "4" "Cache Store — POST /api/cache/store"
 
+  if [[ "$DRY_RUN" == false && "$CACHE_AVAILABLE" == "0" ]]; then
+    skip_cache_note
+    printf '\n'
+    return 0
+  fi
   subtitle "Request"
   cmd_label 'curl -s -X POST http://localhost:8756/api/cache/store \
     -H "Content-Type: application/json" \
-    -d '"'"'{"query":"efficient speculative decoding","response":"...","tokens_used":1500}'"'"''
+    -d '"'"'{"query":"efficient speculative decoding","response":"..."}'"'"''
   do_curl POST "$BASE_URL/api/cache/store" \
     -H "Content-Type: application/json" \
-    -d '{"query":"efficient speculative decoding","response":"...","tokens_used":1500}'
+    -d '{"query":"efficient speculative decoding","response":"..."}'
 
   subtitle "What you get"
-  info "Stores a response for future semantic cache lookups:"
-  printf '  {"stored":true,"entry_id":"cache_abc123","ttl_seconds":86400}\n'
+  info "Stores a query-response pair for future semantic lookups (schema: query, response, phase?):"
+  printf '  {"status":"stored"}\n'
   printf '\n'
 }
 
 # ── 5. Webhook Verification ───────────────────────────────────────────
+# NOTE: for a true signature demo, set TAP_WEBHOOK_SECRET on the server and pass
+# the matching HMAC-SHA256 of the raw body in X-Tap-Signature. Without the
+# secret configured, the server skips verification (demo mode).
 section_5() {
   section "5" "Webhook Signature Verification — POST /api/billing/webhook"
+
+  local uid="$DEMO_UID"
+  local charge="ch_demo_$(date +%s)"
+  if [[ "$DRY_RUN" == false ]]; then
+    ensure_demo_user || true
+    uid="${DEMO_UID:-usr_abc123}"
+  else
+    uid="<demo-user-id>"
+  fi
 
   subtitle "Request"
   cmd_label 'curl -s -X POST http://localhost:8756/api/billing/webhook \
     -H "Content-Type: application/json" \
     -H "X-Tap-Signature: <hmac-sha256>" \
-    -d '"'"'{"id":"ch_123","status":"CAPTURED",...}'"'"''
+    -d '"'"'{"id":"<charge_id>","status":"CAPTURED",...}'"'"''
   do_curl POST "$BASE_URL/api/billing/webhook" \
     -H "Content-Type: application/json" \
     -H "X-Tap-Signature: <hmac-sha256>" \
-    -d '{"id":"ch_123","status":"CAPTURED","response":{"code":"000","message":"Success"},"metadata":{"udf1":"plan:pro_monthly","udf2":"user:usr_abc123","udf3":"email:demo@novalabs.io"}}'
+    -d "{\"id\":\"$charge\",\"status\":\"CAPTURED\",\"response\":{\"code\":\"000\",\"message\":\"Success\"},\"metadata\":{\"udf1\":\"plan:pro_monthly\",\"udf2\":\"user:$uid\",\"udf3\":\"email:$DEMO_EMAIL\"}}"
 
   subtitle "How signature verification works"
   info "The server verifies webhook signatures using HMAC-SHA256:"
@@ -240,20 +311,14 @@ section_5() {
 section_6() {
   section "6" "Subscription Status — GET /api/billing/subscription"
 
-  local token="${JWT_TOKEN:-}"
-  if [[ -z "$token" && "$DRY_RUN" == false ]]; then
-    local auth_resp
-    # NOTE: dummy demo-only credentials for local demo script — not real accounts
-    auth_resp=$(curl -s -X POST "$BASE_URL/api/auth/login" \
-      -H "Content-Type: application/json" \
-      -d '{"email":"demo@leastgen.com","password":"password123"}' 2>/dev/null)
-    token=$(echo "$auth_resp" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
-    if [[ -z "$token" ]]; then
-      auth_resp=$(curl -s -X POST "$BASE_URL/api/auth/signup" \
-        -H "Content-Type: application/json" \
-        -d '{"email":"demo@leastgen.com","password":"password123","name":"Demo User"}' 2>/dev/null)
-      token=$(echo "$auth_resp" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+  if [[ "$DRY_RUN" == false ]]; then
+    if ensure_demo_user; then
+      local token="$DEMO_TOKEN"
+    else
+      local token=""
     fi
+  else
+    local token=""
   fi
 
   subtitle "Request"
@@ -272,6 +337,7 @@ section_6() {
   subtitle "What you get"
   info "Returns the current user's subscription tier and status:"
   printf '  {"tier":"pro_monthly","status":"active","charge_id":"ch_123","plan":{"id":"pro_monthly","name":"Pro Monthly (Hosted)","price":29,"currency":"USD","interval":"month"}}\n'
+  printf '  (fresh account → {"tier":"free","status":"active","runs_limit":10,"plan":{...}})\n'
   printf '\n'
 }
 
@@ -364,6 +430,10 @@ done
 
 # ── Main ───────────────────────────────────────────────────────────────
 print_banner
+probe_cache
+if [[ "$CACHE_AVAILABLE" == "0" ]]; then
+  warn "No /api/cache/* on this server — cache sections (2/3/4) will SKIP"
+fi
 
 if [[ ${#SECTIONS[@]} -eq 0 ]]; then
   section_1
