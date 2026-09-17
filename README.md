@@ -1,7 +1,6 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://via.placeholder.com/1000x300/08090a/ffffff?text=LeastGen">
-  <img alt="LeastGen Labs" src="https://via.placeholder.com/1000x300/08090a/ffffff?text=LeastGen" width="100%">
-</picture>
+<img alt="LeastGen Labs — research ideation platform" src="docs/assets/hero-ui.jpg" width="100%">
+
+![LeastGen UI tour](docs/assets/demo.gif)
 
 <p align="center">
   <strong>From a research direction to a publication-ready idea card — fully automated.</strong>
