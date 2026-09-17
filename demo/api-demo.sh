@@ -24,6 +24,10 @@ DEMO_PASS="${DEMO_PASS:-password123}"
 DEMO_NAME="Demo User"
 DEMO_TOKEN=""
 DEMO_UID=""
+# DEMO_ENV_FILE: project-root .env holding TAP_API_KEY for the §5 hashstring demo.
+# The key is read only to compute the HMAC locally — it is never echoed or logged.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEMO_ENV_FILE="${DEMO_ENV_FILE:-$SCRIPT_DIR/../.env}"
 
 # ── Colors ─────────────────────────────────────────────────────────────
 RED=$'\033[0;31m'
@@ -272,12 +276,15 @@ section_4() {
   printf '\n'
 }
 
-# ── 5. Webhook Verification ───────────────────────────────────────────
-# NOTE: for a true signature demo, set TAP_WEBHOOK_SECRET on the server and pass
-# the matching HMAC-SHA256 of the raw body in X-Tap-Signature. Without the
-# secret configured, the server skips verification (demo mode).
+# ── 5. Webhook Verification (Tap's real `hashstring` scheme) ─────────────
+# Tap proves webhook authenticity via a `hashstring` header: HMAC-SHA256 over
+# x_id{...}x_amount{...}x_currency{...}x_gateway_reference{...}x_payment_reference{...}
+# x_status{...}x_created{...}, keyed with the Secret API Key (sk_live_*/sk_test_*).
+# Docs: https://developers.tap.company/docs/webhook ("Validate the webhook").
+# This section computes a VALID hashstring with python3 so the live call returns
+# 200; a tampered header returns 401.
 section_5() {
-  section "5" "Webhook Signature Verification — POST /api/billing/webhook"
+  section "5" "Webhook hashstring Verification — POST /api/billing/webhook"
 
   local uid="$DEMO_UID"
   local charge="ch_demo_$(date +%s)"
@@ -288,22 +295,46 @@ section_5() {
     uid="<demo-user-id>"
   fi
 
+  local amount="29.00" currency="USD" gw_ref="gw_demo_1" pay_ref="pay_demo_$charge"
+  local status="CAPTURED" created="1720000000000"
+  local body="{\"id\":\"$charge\",\"object\":\"charge\",\"status\":\"$status\",\"amount\":29.0,\"currency\":\"$currency\",\"response\":{\"code\":\"000\",\"message\":\"Success\"},\"reference\":{\"gateway\":\"$gw_ref\",\"payment\":\"$pay_ref\"},\"transaction\":{\"created\":\"$created\"},\"metadata\":{\"udf1\":\"plan:pro_monthly\",\"udf2\":\"user:$uid\",\"udf3\":\"email:$DEMO_EMAIL\"}}"
+  local hashstring="<computed-at-runtime>"
+  if [[ "$DRY_RUN" == false ]] && command -v python3 &>/dev/null; then
+    # Mirror of backend/routers/billing.py::_verify_tap_hashstring (charge recipe).
+    # Uses TAP_API_KEY when set (never echoed); falls back to "unsigned-demo".
+    local key="${TAP_API_KEY:-}"
+    if [[ -z "$key" && -f "$DEMO_ENV_FILE" ]]; then
+      key="$(grep -E '^TAP_API_KEY=' "$DEMO_ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '\"''')"
+    fi
+    if [[ -n "$key" ]]; then
+      hashstring="$(TAP_DEMO_KEY="$key" python3 -c "
+import hashlib, hmac, os
+s = 'x_id$charge' + 'x_amount$amount' + 'x_currency$currency' + 'x_gateway_reference$gw_ref' + 'x_payment_reference$pay_ref' + 'x_status$status' + 'x_created$created'
+print(hmac.new(os.environ['TAP_DEMO_KEY'].encode(), s.encode(), hashlib.sha256).hexdigest())
+" 2>/dev/null)"
+      [[ -z "$hashstring" ]] && hashstring="<compute-failed>"
+    else
+      hashstring="unsigned-demo"
+    fi
+  fi
+
   subtitle "Request"
   cmd_label 'curl -s -X POST http://localhost:8756/api/billing/webhook \
     -H "Content-Type: application/json" \
-    -H "X-Tap-Signature: <hmac-sha256>" \
-    -d '"'"'{"id":"<charge_id>","status":"CAPTURED",...}'"'"''
+    -H "hashstring: <hmac-of-fields-with-secret-api-key>" \
+    -d '"'"'{"id":"<charge_id>","object":"charge","status":"CAPTURED",...}'"'"''
   do_curl POST "$BASE_URL/api/billing/webhook" \
     -H "Content-Type: application/json" \
-    -H "X-Tap-Signature: <hmac-sha256>" \
-    -d "{\"id\":\"$charge\",\"status\":\"CAPTURED\",\"response\":{\"code\":\"000\",\"message\":\"Success\"},\"metadata\":{\"udf1\":\"plan:pro_monthly\",\"udf2\":\"user:$uid\",\"udf3\":\"email:$DEMO_EMAIL\"}}"
+    -H "hashstring: $hashstring" \
+    -d "$body"
 
-  subtitle "How signature verification works"
-  info "The server verifies webhook signatures using HMAC-SHA256:"
-  printf '  1. Concatenate the raw request body\n'
-  printf '  2. Compute HMAC-SHA256 with TAP_WEBHOOK_SECRET as the key\n'
-  printf '  3. Compare the computed digest against the X-Tap-Signature header\n'
-  printf '  4. Reject requests with mismatched signatures (401)\n'
+  subtitle "How hashstring verification works"
+  info "The server verifies Tap's hashstring header (HMAC-SHA256, Secret API Key):"
+  printf '  1. Concatenate x_id, x_amount (currency-rounded), x_currency,\n'
+  printf '     x_gateway_reference, x_payment_reference, x_status, x_created\n'
+  printf '  2. Compute HMAC-SHA256 with TAP_API_KEY (sk_live_*/sk_test_*) as the key\n'
+  printf '  3. Compare against the `hashstring` request header (compare_digest)\n'
+  printf '  4. Reject mismatches with 401; unsigned posts 401 only when no API key is configured\n'
   printf '\n'
 }
 
