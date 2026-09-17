@@ -27,9 +27,11 @@ from backend.routers.auth import get_current_user
 router = APIRouter()
 
 # ── Tap Config ─────────────────────────────────────────────────────────────
+# NOTE: Tap has no separate webhook signing secret. Webhook authenticity is
+# proven via the `hashstring` header (HMAC-SHA256, keyed with TAP_API_KEY).
+# See _verify_tap_hashstring below and https://developers.tap.company/docs/webhook.
 TAP_API_KEY = os.environ.get("TAP_API_KEY", "")
 TAP_MERCHANT_ID = os.environ.get("TAP_MERCHANT_ID", "")
-TAP_WEBHOOK_SECRET = os.environ.get("TAP_WEBHOOK_SECRET", "")
 TAP_BASE = "https://api.tap.company/v2"
 
 # Plan definitions
@@ -131,19 +133,61 @@ def _call_tap(method: str, path: str, body: dict | None = None) -> dict[str, Any
         raise HTTPException(status_code=502, detail=f"Tap API unreachable: {e.reason}")
 
 
-# ── Webhook verification ──
+# ── Webhook verification (Tap's real scheme) ──
+# Tap does NOT use a separate signing secret. Webhook authenticity is proven
+# via the `hashstring` header: HMAC-SHA256 over a concatenated field string,
+# keyed with the Secret API Key (sk_live_*/sk_test_*).
+# Docs: https://developers.tap.company/docs/webhook ("Validate the webhook")
+#
+# Charge/authorize recipe (concatenated in this exact order):
+#   x_id={id} x_amount={amount} x_currency={currency}
+#   x_gateway_reference={reference.gateway or ""}
+#   x_payment_reference={reference.payment}
+#   x_status={status} x_created={transaction.created}
+# Amounts must be rounded to the currency's standard decimals
+# (e.g. SAR/AED/USD 2dp, BHD/KWD/JOD 3dp) BEFORE hashing.
+
+_CURRENCY_DECIMALS = {
+    "BHD": 3, "KWD": 3, "JOD": 3, "OMR": 3, "TND": 3,
+}
+
+_HASHSTRING_HEADER_NAMES = ("hashstring", "x-hashstring", "x-tap-signature", "x-signature")
 
 
-def _verify_tap_signature(raw_body: bytes, signature: str) -> bool:
-    """Verify Tap webhook signature using HMAC-SHA256."""
-    if not TAP_WEBHOOK_SECRET:
+def _format_amount(amount: Any, currency: str) -> str:
+    """Round amount to the currency's standard decimals, as Tap's recipe requires."""
+    decimals = _CURRENCY_DECIMALS.get((currency or "").upper(), 2)
+    try:
+        value = float(amount)
+    except (TypeError, ValueError):
+        value = 0.0
+    return f"{value:.{decimals}f}"
+
+
+def _verify_tap_hashstring(payload: dict[str, Any], posted_hash: str) -> bool:
+    """Verify Tap's `hashstring` webhook header using the Secret API Key."""
+    if not TAP_API_KEY or not posted_hash:
         return False
+
+    transaction = payload.get("transaction") or {}
+    reference = payload.get("reference") or {}
+
+    to_hash = (
+        f"x_id{payload.get('id', '')}"
+        f"x_amount{_format_amount(payload.get('amount'), payload.get('currency', ''))}"
+        f"x_currency{payload.get('currency', '')}"
+        f"x_gateway_reference{reference.get('gateway', '') or ''}"
+        f"x_payment_reference{reference.get('payment', '') or ''}"
+        f"x_status{payload.get('status', '')}"
+        f"x_created{transaction.get('created', '')}"
+    )
+
     expected = hmac.new(
-        TAP_WEBHOOK_SECRET.encode("utf-8"),
-        raw_body,
+        TAP_API_KEY.encode("utf-8"),
+        to_hash.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
-    return hmac.compare_digest(expected, signature)
+    return hmac.compare_digest(expected, str(posted_hash))
 
 
 # ── Routes ──
@@ -242,18 +286,26 @@ async def create_checkout(
 
 @router.post("/billing/webhook")
 async def tap_webhook(request: Request):
-    """Handle Tap payment webhook (post URL). Verifies signature before processing."""
+    """Handle Tap payment webhook (post URL). Verifies Tap's `hashstring` header."""
     raw_body = await request.body()
-
-    # Verify signature if webhook secret is configured
-    signature = request.headers.get("X-Tap-Signature", request.headers.get("X-Signature", ""))
-    if TAP_WEBHOOK_SECRET and not _verify_tap_signature(raw_body, signature):
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     try:
         body = json.loads(raw_body)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    # Verify Tap's hashstring header (HMAC-SHA256, keyed with Secret API Key).
+    # Fail closed when the Secret API Key is not configured.
+    posted_hash = ""
+    for header_name in _HASHSTRING_HEADER_NAMES:
+        posted_hash = request.headers.get(header_name, "")
+        if posted_hash:
+            break
+    if posted_hash:
+        if not _verify_tap_hashstring(body, posted_hash):
+            raise HTTPException(status_code=401, detail="Invalid webhook hashstring")
+    elif not TAP_API_KEY:
+        raise HTTPException(status_code=401, detail="Webhook verification not configured")
 
     # Extract charge info
     charge_id = body.get("id", "")
