@@ -26,6 +26,7 @@ from backend.database import (
     list_all_pipeline_runs,
     sync_run_to_disk_and_db,
 )
+from backend.engine_guard import MISSING_ENGINE_MSG, engine_present
 
 router = APIRouter()
 
@@ -296,6 +297,8 @@ async def start_pipeline(req: PipelineStartRequest):
     query = req.query.strip()
     if not query:
         raise HTTPException(status_code=400, detail="Research query cannot be empty")
+    if not engine_present(PROJECT_ROOT):
+        raise HTTPException(status_code=500, detail=MISSING_ENGINE_MSG)
 
     slug = _slugify(query)
     run_id = f"{slug}-{secrets.token_hex(4)}"
@@ -447,6 +450,8 @@ async def run_single_phase_endpoint(run_id: str, phase_key: str):
     valid_keys = [p["key"] for p in PIPELINE_PHASE_DEFS]
     if phase_key not in valid_keys:
         raise HTTPException(status_code=400, detail=f"Invalid phase_key: {phase_key}")
+    if not engine_present(PROJECT_ROOT):
+        raise HTTPException(status_code=500, detail=MISSING_ENGINE_MSG)
 
     ok = _execute_single_phase(run_id, phase_key)
     details = get_pipeline_run_details(run_id) or {}

@@ -1,13 +1,13 @@
-# Nova Hosting Guide
+# LeastGen Hosting Guide
 
-## Two Ways to Use Nova
+## Two Ways to Use LeastGen
 
 ### 1. Self-Hosted (FREE)
 Clone the repository and run it yourself with your own API keys:
 
 ```bash
-git clone https://github.com/YOURREPO/nova
-cd nova
+git clone https://github.com/KhalidAlnujaidi/leastgen
+cd leastgen
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -17,7 +17,7 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8756
 
 **Cost:** Free (you pay OpenRouter directly for token usage)
 
-### 2. Nova Hosted Service
+### 2. LeastGen Hosted Service
 If you prefer not to manage servers, we offer a hosted version:
 
 - **Free Tier:** 10 runs/month
@@ -40,7 +40,7 @@ curl http://localhost:8756/api/pipeline/start \
   -d '{"query": "efficient LLM inference"}'
 
 # Hosted service
-curl https://api.nova.dev/api/pipeline/start \
+curl https://api.leastgen.com/api/pipeline/start \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"query": "efficient LLM inference"}'

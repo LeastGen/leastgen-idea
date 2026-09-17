@@ -42,7 +42,7 @@
 | F20 | **Medium** | Edge cases | No phase status combination tests (complete/running/failed/pending) | `backend/routers/pipeline.py` (164-196), `frontend/app.js` (397-441) |
 | F21 | **Medium** | Edge cases | No webhook non-CAPTURED status handling test | `backend/routers/billing.py` (272) |
 | F22 | **Low** | Brand | No English-only enforcement test (verify no i18n code, RTL, language toggles) | `frontend/index.html`, `frontend/app.js`, `frontend/style.css` |
-| F23 | **Low** | Brand | No Nova Labs brand/identity consistency test | `frontend/index.html` (6, 28, 221, 268, 270), `frontend/brand/brand.css` (49) |
+| F23 | **Low** | Brand | No LeastGen Labs brand/identity consistency test | `frontend/index.html` (6, 28, 221, 268, 270), `frontend/brand/brand.css` (49) |
 
 ---
 
@@ -233,11 +233,11 @@ async def generic_exception_handler(request: Request, exc: Exception):
 - No language toggle UI element ✓
 - No RTL styles (`dir="rtl"`, `unicode-bidi`, `text-align: right` for body) ✓
 - No `Intl` API usage for localization ✓
-- Brand consistently "Nova Labs" / "NovaLabs" throughout ✓
+- Brand consistently "LeastGen Labs" / "LeastGenLabs" throughout ✓
 
 **Testing gaps:**
 - **F22:** No English-only enforcement test. The framework mandates English-only UI and output. Test: scan `index.html`, `app.js`, `style.css` for any i18n code, RTL styles, language selectors, or non-English UI strings. Currently none exist — verify this remains true.
-- **F23:** No brand consistency test. Verify "Nova Labs" branding is consistent across `index.html` (title, logo text, footer), `brand.css` (`--brand-name: Nova Labs`), and any other UI surfaces. The dashboard.html (ui.py line 25-256) uses "IdeaFlow" branding — this is a legacy page and not part of the main SPA.
+- **F23:** No brand consistency test. Verify "LeastGen Labs" branding is consistent across `index.html` (title, logo text, footer), `brand.css` (`--brand-name: LeastGen Labs`), and any other UI surfaces. The dashboard.html (ui.py line 25-256) uses "IdeaFlow" branding — this is a legacy page and not part of the main SPA.
 
 ---
 
@@ -325,7 +325,7 @@ These are confirmed by code review and should be documented as passing security 
 | Allowed-field whitelist in `update_user` | PASS | `backend/database.py:175` |
 | Webhook non-CAPTURED status → no-op (not crash) | PASS | `backend/routers/billing.py:272` |
 | English-only (no i18n, RTL, language toggles) | PASS | `frontend/index.html`, `app.js`, `style.css` — grep confirms |
-| Nova Labs brand consistency | PASS | `frontend/index.html`, `frontend/brand/brand.css` |
+| LeastGen Labs brand consistency | PASS | `frontend/index.html`, `frontend/brand/brand.css` |
 
 ---
 

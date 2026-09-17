@@ -1,6 +1,6 @@
 [Unit]
 Description={{APP_NAME^}} Labs Production API Server
-Documentation=https://github.com/nova-labs/{{APP_NAME}}
+Documentation=https://github.com/KhalidAlnujaidi/leastgen
 After=network.target network-online.target
 Wants=network-online.target
 

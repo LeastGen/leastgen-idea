@@ -17,6 +17,13 @@ VENV="$SCRIPT_DIR/.venv"
 SKILL_DIR="$SCRIPT_DIR/researchstudio/ResearchStudio-Idea/skills/idea_spark"
 LLM_BRIDGE="$SCRIPT_DIR/llm_bridge.py"
 
+# ── Engine guard (researchstudio/ is git-ignored; fetch via scripts/fetch_engine.sh) ─
+if [ ! -f "$SKILL_DIR/scripts/run.py" ]; then
+  echo "ERROR: ResearchStudio engine not found at researchstudio/." >&2
+  echo "Fetch it with: bash scripts/fetch_engine.sh" >&2
+  exit 1
+fi
+
 # ── Activate venv ──────────────────────────────────────────────────────────
 if [ -f "$VENV/bin/activate" ]; then
   source "$VENV/bin/activate"

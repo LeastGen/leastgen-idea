@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.schemas.models import PhaseRequest, PhaseResponse, RunStatus
+from backend.engine_guard import require_engine
 
 router = APIRouter()
 
@@ -19,6 +20,12 @@ router = APIRouter()
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SKILL_DIR = PROJECT_ROOT / "researchstudio" / "ResearchStudio-Idea" / "skills" / "idea_spark"
 RUN_DIR = PROJECT_ROOT / "ideaspark_run"
+
+
+def _engine_script() -> Path:
+    """Engine entry point, with actionable error when the engine is unfetched."""
+    require_engine(PROJECT_ROOT)
+    return SKILL_DIR / "scripts" / "run.py"
 
 
 def _slugify(text: str) -> str:
@@ -55,7 +62,10 @@ async def run_phase0(req: PhaseRequest):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     python = _get_venv_python()
-    script = SKILL_DIR / "scripts" / "run.py"
+    try:
+        script = _engine_script()
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     cmd = [
         python, str(script), "phase0",
@@ -103,7 +113,10 @@ async def get_next_step(run_id: str):
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
 
     python = _get_venv_python()
-    script = SKILL_DIR / "scripts" / "run.py"
+    try:
+        script = _engine_script()
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     cmd = [python, str(script), "next", "--dir", str(run_path)]
 

@@ -708,6 +708,11 @@ def main():
         print("Usage: run_scoop.py <scoop_id>")
         sys.exit(1)
 
+    if not (SKILL_DIR / "scripts" / "run.py").is_file():
+        print("ERROR: ResearchStudio engine not found at researchstudio/.")
+        print("Fetch it with: bash scripts/fetch_engine.sh")
+        sys.exit(1)
+
     cleanup_old_scoop_runs()
 
     scoop_id = sys.argv[1]

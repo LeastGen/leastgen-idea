@@ -8,6 +8,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.engine_guard import require_engine
+
 router = APIRouter()
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -60,6 +62,10 @@ async def run_phase0_fulltext(req: FulltextRequest):
         raise HTTPException(status_code=404, detail=f"Phase dir not found: {phase_dir}")
 
     python = _get_venv_python()
+    try:
+        require_engine(PROJECT_ROOT)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
     script = SUB_DIR / "scripts" / "run.py"
     cmd = [python, str(script), "phase0_fulltext", "--out", str(phase_dir)]
 

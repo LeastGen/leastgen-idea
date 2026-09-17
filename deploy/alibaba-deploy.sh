@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Alibaba Cloud Production Deployment Script
-# Nova Labs (think-fast) & LeastGen Labs (leastgen-hosted)
+# LeastGen Labs (think-fast) & LeastGen Labs (leastgen-hosted)
 # Target OS: Ubuntu 22.04 LTS / Debian 11 / Debian 12 (Alibaba Cloud ECS)
 # ==============================================================================
 set -euo pipefail
@@ -22,9 +22,9 @@ log_warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 log_error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 # ── Defaults & Configuration ──────────────────────────────────────────────────
-APP_NAME="nova"
-APP_USER="nova"
-APP_DIR="/opt/nova"
+APP_NAME="leastgen"
+APP_USER="leastgen"
+APP_DIR="/opt/leastgen"
 APP_PORT="8756"
 DOMAIN_NAME=""
 USE_ALICLOUD_MIRROR="auto"
@@ -51,7 +51,7 @@ Usage:
   sudo bash deploy/alibaba-deploy.sh [OPTIONS]
 
 Options:
-  --app <name>             Application flavor: 'nova' or 'leastgen' (default: nova)
+  --app <name>             Application flavor: 'leastgen' (default: leastgen)
   --user <username>        System user to run service (default: matches app name)
   --dir <path>             Deployment directory (default: /opt/<app>)
   --port <port>            Internal application port (default: 8756)
@@ -69,14 +69,14 @@ Options:
   -h, --help               Display this help message
 
 Examples:
-  # Deploy Nova Labs on Alibaba Cloud ECS with custom domain
-  sudo bash deploy/alibaba-deploy.sh --app nova --domain research.example.com --ssl --email admin@example.com
+  # Deploy LeastGen Labs on Alibaba Cloud ECS with custom domain
+  sudo bash deploy/alibaba-deploy.sh --app leastgen --domain research.example.com --ssl --email admin@example.com
 
   # Deploy LeastGen Labs
   sudo bash deploy/alibaba-deploy.sh --app leastgen --domain api.leastgen.com
 
   # Fast update of existing deployment
-  sudo bash deploy/alibaba-deploy.sh --app nova --update
+  sudo bash deploy/alibaba-deploy.sh --app leastgen --update
 EOF
     exit 0
 }
@@ -154,13 +154,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Sync defaults if app is leastgen
-if [[ "$APP_NAME" == "leastgen" && "$APP_USER" == "nova" ]]; then
-    APP_USER="leastgen"
-fi
-if [[ "$APP_NAME" == "leastgen" && "$APP_DIR" == "/opt/nova" ]]; then
-    APP_DIR="/opt/leastgen"
-fi
+# Defaults already target leastgen; --user/--dir/--port overrides apply directly.
 
 # ── Preflight Checks ──────────────────────────────────────────────────────────
 check_privileges() {

@@ -1,5 +1,5 @@
 # Alibaba Cloud ECS Production Deployment Guide
-**Applications:** Nova Labs (`think-fast`) & LeastGen Labs (`leastgen-hosted`)  
+**Applications:** LeastGen Labs (`think-fast`) & LeastGen Labs (`leastgen-hosted`)  
 **Target OS:** Ubuntu 22.04 LTS / Debian 12 (64-bit)  
 **Architecture:** FastAPI + Uvicorn (Systemd) + Nginx (Reverse Proxy & SSL) + SQLite WAL
 
@@ -36,18 +36,18 @@ Configure Inbound Rules:
 
 The repository includes a battle-tested automated deployment script `deploy/alibaba-deploy.sh`.
 
-### 2.1 Deploy Nova Labs (Default)
+### 2.1 Deploy LeastGen Labs (Default)
 SSH into your ECS instance:
 ```bash
 ssh root@<YOUR_ECS_IP>
 
 # Clone repository or copy project files to server
-git clone https://github.com/YOUR_ORG/think-fast.git /tmp/think-fast
-cd /tmp/think-fast
+git clone https://github.com/KhalidAlnujaidi/leastgen.git /tmp/leastgen
+cd /tmp/leastgen
 
 # Run deployment automation
 sudo bash deploy/alibaba-deploy.sh \
-    --app nova \
+    --app leastgen \
     --domain research.yourdomain.com \
     --ssl \
     --email admin@yourdomain.com
@@ -87,72 +87,72 @@ sudo apt install -y \
 ### Step 2: Create Dedicated Service User & Directories
 ```bash
 # Create system user without interactive shell
-sudo useradd --system --shell /usr/sbin/nologin --home-dir /opt/nova nova
+sudo useradd --system --shell /usr/sbin/nologin --home-dir /opt/leastgen leastgen
 
 # Create directory hierarchy
-sudo mkdir -p /opt/nova /opt/nova/data /opt/nova/ideaspark_run /opt/nova/scoop_runs /var/log/nova /etc/nova
+sudo mkdir -p /opt/leastgen /opt/leastgen/data /opt/leastgen/ideaspark_run /opt/leastgen/scoop_runs /var/log/leastgen /etc/leastgen
 
-# Transfer code into /opt/nova
-sudo cp -R . /opt/nova/
+# Transfer code into /opt/leastgen
+sudo cp -R . /opt/leastgen/
 
 # Set ownership
-sudo chown -R nova:nova /opt/nova /var/log/nova /etc/nova
-sudo chmod 750 /opt/nova /var/log/nova /etc/nova
+sudo chown -R leastgen:leastgen /opt/leastgen /var/log/leastgen /etc/leastgen
+sudo chmod 750 /opt/leastgen /var/log/leastgen /etc/leastgen
 ```
 
 ### Step 3: Setup Python Virtual Environment
 ```bash
-cd /opt/nova
-sudo -u nova python3 -m venv .venv
-sudo -u nova /opt/nova/.venv/bin/pip install --upgrade pip wheel
-sudo -u nova /opt/nova/.venv/bin/pip install -r requirements.txt
-sudo -u nova /opt/nova/.venv/bin/pip install uvicorn fastapi pyjwt pydantic
+cd /opt/leastgen
+sudo -u leastgen python3 -m venv .venv
+sudo -u leastgen /opt/leastgen/.venv/bin/pip install --upgrade pip wheel
+sudo -u leastgen /opt/leastgen/.venv/bin/pip install -r requirements.txt
+sudo -u leastgen /opt/leastgen/.venv/bin/pip install uvicorn fastapi pyjwt pydantic
 ```
 
 ### Step 4: Configure Production Secrets
 ```bash
 # Copy production env template
-sudo cp /opt/nova/deploy/.env.production.example /etc/nova/nova.env
+sudo cp /opt/leastgen/deploy/.env.production.example /etc/leastgen/leastgen.env
 
 # Generate secure 64-char JWT secret
 JWT_SECRET=$(openssl rand -hex 32)
-sudo sed -i "s|REPLACE_WITH_OPENSSL_RAND_HEX_32_OUTPUT|${JWT_SECRET}|" /etc/nova/nova.env
+sudo sed -i "s|REPLACE_WITH_OPENSSL_RAND_HEX_32_OUTPUT|${JWT_SECRET}|" /etc/leastgen/leastgen.env
 
-# Edit /etc/nova/nova.env to set:
+# Edit /etc/leastgen/leastgen.env to set:
 # - OPENROUTER_API_KEY
 # - TAP_API_KEY (sk_live_...)
 # - TAP_WEBHOOK_SECRET
 # - CORS_ORIGINS
-sudo nano /etc/nova/nova.env
+sudo nano /etc/leastgen/leastgen.env
 
 # Lock down permissions
-sudo chown root:nova /etc/nova/nova.env
-sudo chmod 640 /etc/nova/nova.env
+sudo chown root:leastgen /etc/leastgen/leastgen.env
+sudo chmod 640 /etc/leastgen/leastgen.env
 ```
 
 ### Step 5: Install Systemd Service Unit
 ```bash
-sudo cp /opt/nova/deploy/nova.service /etc/systemd/system/nova.service
+sudo cp /opt/leastgen/deploy/leastgen.service /etc/systemd/system/leastgen.service
 sudo systemctl daemon-reload
-sudo systemctl enable nova.service
-sudo systemctl start nova.service
+sudo systemctl enable leastgen.service
+sudo systemctl start leastgen.service
 
 # Verify service is running:
-sudo systemctl status nova.service
+sudo systemctl status leastgen.service
 curl -s http://127.0.0.1:8756/api/health | jq .
 ```
 
 ### Step 6: Configure Nginx Reverse Proxy
 ```bash
 # Copy Nginx config
-sudo cp /opt/nova/deploy/nginx.conf /etc/nginx/sites-available/nova.conf
+sudo cp /opt/leastgen/deploy/nginx.conf /etc/nginx/sites-available/leastgen.conf
 
 # Replace placeholder domain name with your actual domain
-sudo sed -i "s|research.example.com|research.yourdomain.com|g" /etc/nginx/sites-available/nova.conf
+sudo sed -i "s|research.example.com|research.yourdomain.com|g" /etc/nginx/sites-available/leastgen.conf
 
 # Enable site
 sudo rm -f /etc/nginx/sites-enabled/default
-sudo ln -sf /etc/nginx/sites-available/nova.conf /etc/nginx/sites-enabled/nova.conf
+sudo ln -sf /etc/nginx/sites-available/leastgen.conf /etc/nginx/sites-enabled/leastgen.conf
 
 # Test configuration syntax
 sudo nginx -t
@@ -183,7 +183,7 @@ sudo ufw enable
 Streaming LLM tokens requires that intermediate reverse proxies do **not** buffer responses:
 ```nginx
 location ~ ^/api/(pipeline/start|scoop-check/start) {
-    proxy_pass http://nova_upstream;
+    proxy_pass http://leastgen_upstream;
     proxy_http_version 1.1;
 
     # Disable proxy buffering so chunks arrive immediately in browser
@@ -210,11 +210,11 @@ Configured in `deploy/nginx.conf`:
 
 | Task | Command |
 |------|---------|
-| View real-time logs | `journalctl -u nova.service -f` |
+| View real-time logs | `journalctl -u leastgen.service -f` |
 | View Nginx access log | `tail -f /var/log/nginx/access.log` |
-| Restart backend service | `sudo systemctl restart nova.service` |
+| Restart backend service | `sudo systemctl restart leastgen.service` |
 | Reload Nginx cleanly | `sudo nginx -t && sudo systemctl reload nginx` |
-| Backup SQLite database | `sqlite3 /opt/nova/data/ideaflow.db ".backup '/opt/nova/data/backup-$(date +%F).db'"` |
-| Update application code | `sudo bash /opt/nova/deploy/alibaba-deploy.sh --update` |
+| Backup SQLite database | `sqlite3 /opt/leastgen/data/ideaflow.db ".backup '/opt/leastgen/data/backup-$(date +%F).db'"` |
+| Update application code | `sudo bash /opt/leastgen/deploy/alibaba-deploy.sh --update` |
 | Test SSL auto-renewal | `sudo certbot renew --dry-run` |
 | Check memory & swap | `free -h` |

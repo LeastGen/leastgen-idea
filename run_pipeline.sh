@@ -37,8 +37,19 @@ ok()    { echo -e "${GREEN}✓${NC} $1"; }
 warn()  { echo -e "${YELLOW}⚠${NC} $1"; }
 err()   { echo -e "${RED}✗${NC} $1"; }
 
+# ── Engine guard ─────────────────────────────────────────────────────────────
+# researchstudio/ is git-ignored and fetched on demand (scripts/fetch_engine.sh).
+require_engine() {
+    if [ ! -f "$SKILL_DIR/scripts/run.py" ]; then
+        err "ResearchStudio engine not found at researchstudio/."
+        err "Fetch it with: bash scripts/fetch_engine.sh"
+        exit 1
+    fi
+}
+
 # ── Activate venv ──────────────────────────────────────────────────────────
 activate_venv() {
+    require_engine
     if [ -f "$VENV/bin/activate" ]; then
         source "$VENV/bin/activate"
     else

@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Nova Labs API",
+    title="LeastGen Labs API",
     version="0.2.0",
     lifespan=lifespan,
 )

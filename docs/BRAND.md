@@ -1,8 +1,8 @@
-# Nova — Brand Guidelines
+# LeastGen — Brand Guidelines
 
 ## 📋 Overview
 
-**Nova** is an automated research ideation platform that transforms research directions into publication-ready proposals in minutes, not weeks. Built on a 12-phase AI pipeline, Nova searches literature, identifies bottlenecks, generates novel candidates, validates novelty, and produces structured proposals with equations.
+**LeastGen** is an automated research ideation platform that transforms research directions into publication-ready proposals in minutes, not weeks. Built on a 12-phase AI pipeline, LeastGen searches literature, identifies bottlenecks, generates novel candidates, validates novelty, and produces structured proposals with equations.
 
 ### Mission
 Accelerate scientific discovery by automating the tedious parts of research ideation — from literature review to hypothesis generation — so researchers can focus on experimentation and insight.
@@ -58,7 +58,7 @@ A world where groundbreaking research is accessible to every researcher, not jus
 
 ### Iconography
 
-- **Nova Logo**: Simple star/supernova glyph (⚡ or ★)
+- **LeastGen Logo**: Simple star/spark glyph (⚡ or ★)
 - **Features**: Emoji-based icons for quick recognition (🔍, ⚡, 📚, ✅)
 
 ---
@@ -67,11 +67,11 @@ A world where groundbreaking research is accessible to every researcher, not jus
 
 | Context | Usage |
 |---------|-------|
-| **Product** | `Nova` or `Nova Labs` |
+| **Product** | `LeastGen` or `LeastGen Labs` |
 | **Feature (Novelty Check)** | `Scoop-Check` |
-| **Feature (Full Pipeline)** | `IdeaSpark` or `Nova Pipeline` |
+| **Feature (Full Pipeline)** | `IdeaSpark` or `LeastGen Pipeline` |
 | **Documentation** | `docs/BRAND.md`, `README.md` |
-| **Scripts** | `run_nova.sh`, `deploy/nova.service` |
+| **Scripts** | `run_leastgen.sh`, `deploy/leastgen.service` |
 
 ---
 
@@ -85,18 +85,18 @@ A world where groundbreaking research is accessible to every researcher, not jus
 
 ---
 
-## 🚫 What Nova Is NOT
+## 🚫 What LeastGen Is NOT
 
 - ❌ **Not a paper generator** (it generates *ideas* and *proposals*, not final manuscripts)
 - ❌ **Not a replacement for researchers** (it's a research assistant, not an autonomous author)
 - ❌ **Not a free-form LLM chat** (structured pipeline with validation at each phase)
-- ❌ **Not field-specific** (unlike bioinformatics tools, Nova is field-agnostic)
+- ❌ **Not field-specific** (unlike bioinformatics tools, LeastGen is field-agnostic)
 
 ---
 
 ## ✅ Brand Checklist (Pre-Release)
 
-- [ ] All references use "Nova" (not IdeaFlow or Open Research)
+- [ ] All references use "LeastGen" (not IdeaFlow or Open Research)
 - [ ] Logo and favicon consistent across pages
 - [ ] Dark mode theme applied to all UI components
 - [ ] Tone of voice follows guidelines
@@ -113,7 +113,7 @@ A world where groundbreaking research is accessible to every researcher, not jus
 ## 💰 Pricing Model
 
 ### Self-Hosted (FREE)
-Users clone the repository and run with their own OpenRouter API key. No costs from Nova.
+Users clone the repository and run with their own OpenRouter API key. No costs from LeastGen.
 
 ### Hosted Service
 We route requests through our discounted OpenRouter enterprise account with a **30% convenience margin** covering:

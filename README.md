@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://via.placeholder.com/1000x300/08090a/ffffff?text=Nova">
-  <img alt="Nova Labs" src="https://via.placeholder.com/1000x300/08090a/ffffff?text=Nova" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="https://via.placeholder.com/1000x300/08090a/ffffff?text=LeastGen">
+  <img alt="LeastGen Labs" src="https://via.placeholder.com/1000x300/08090a/ffffff?text=LeastGen" width="100%">
 </picture>
 
 <p align="center">
@@ -21,16 +21,16 @@
 
 ## 📋 Overview
 
-**Nova** is an automated research ideation server. Enter a research direction — any direction, in any field — and it produces a complete, structured research proposal with methodology, equations, literature grounding, and falsification predictions.
+**LeastGen** is an automated research ideation server. Enter a research direction — any direction, in any field — and it produces a complete, structured research proposal with methodology, equations, literature grounding, and falsification predictions.
 
 It works in **two modes**:
 
 | Mode | Description | Time |
 |------|-------------|------|
 | **Scoop-Check** | Quick novelty verification — enter a problem + claimed novelty, get a 5-level verdict with prior-art hits | 2–5 min |
-| **Nova Pipeline** | Full 12-phase pipeline — from a research direction to a complete idea card with math, methodology, and falsification | 20–40 min |
+| **LeastGen Pipeline** | Full 12-phase pipeline — from a research direction to a complete idea card with math, methodology, and falsification | 20–40 min |
 
-**Built on** [Microsoft Research Studio-Idea](https://github.com/microsoft/ResearchStudio/tree/main/ResearchStudio-Idea), an MIT-licensed ideation framework. Nova adds a modern web UI, autonomous orchestration, real-time streaming, and a fast novelty pre-check.
+**Built on** [Microsoft Research Studio-Idea](https://github.com/microsoft/ResearchStudio/tree/main/ResearchStudio-Idea), an MIT-licensed ideation framework. LeastGen adds a modern web UI, autonomous orchestration, real-time streaming, and a fast novelty pre-check.
 
 <br>
 
@@ -62,22 +62,25 @@ It works in **two modes**:
 ### One-command setup
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KhalidAlnujaidi/nova/main/deploy/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/KhalidAlnujaidi/leastgen/main/deploy/setup.sh | bash
 ```
 
 ### Manual setup
 
 ```bash
 # Clone the repo
-git clone https://github.com/KhalidAlnujaidi/nova.git
-cd nova
+git clone https://github.com/KhalidAlnujaidi/leastgen.git
+cd leastgen
 
 # Create virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
 # Install dependencies
-pip install fastapi uvicorn pydantic feedparser httpx
+pip install -r requirements.txt
+
+# Fetch the ResearchStudio engine (git-ignored, not in the clone)
+bash scripts/fetch_engine.sh
 
 # Set your API key
 echo 'OPENROUTER_API_KEY=sk-or-v1-...' >> ~/.kinox/env
@@ -91,16 +94,16 @@ Open **http://localhost:8756** in your browser.
 ### Self-hosting with systemd
 
 ```bash
-sudo cp deploy/nova.service /etc/systemd/system/
-sudo systemctl enable nova
-sudo systemctl start nova
+sudo cp deploy/leastgen.service /etc/systemd/system/
+sudo systemctl enable leastgen
+sudo systemctl start leastgen
 ```
 
 <br>
 
 ## 🔬 Pipeline Phases
 
-The Nova Pipeline runs **12 phases** in sequence:
+The LeastGen Pipeline runs **12 phases** in sequence:
 
 ```
 Phase 0      Literature search  ─── arXiv, OpenAlex, Semantic Scholar
@@ -173,7 +176,7 @@ Or use the UI at `http://localhost:8756/api/ui`.
 ## 🏗️ Architecture
 
 ```
-nova/
+leastgen/
 ├── backend/
 │   ├── main.py              # FastAPI application entry point
 │   └── routers/
@@ -196,7 +199,7 @@ nova/
 ├── run_llm_phase.py          # Autonomous LLM phase runner
 ├── run_scoop.py              # Scoop-Check runner
 ├── deploy/
-│   └── nova.service          # systemd service unit
+│   └── leastgen.service          # systemd service unit
 └── LICENSE                   # MIT
 ```
 
@@ -263,7 +266,7 @@ Configurable via `~/.kinox/env` or environment variables.
 
 ## 🏠 Open Source & Hosted Service
 
-Nova is fully open source (MIT License) — you can clone, modify, and self-host for free. We also offer a hosted service with discounted models and no setup:
+LeastGen is fully open source (MIT License) — you can clone, modify, and self-host for free. We also offer a hosted service with discounted models and no setup:
 
 | Plan | Runs | Price | Best For |
 |------|------|-------|----------|

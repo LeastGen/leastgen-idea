@@ -1,4 +1,4 @@
-# Nova Labs Research Workflow — Brand
+# LeastGen Labs Research Workflow — Brand
 
 **Tagline:** Research acceleration for serious scientists
 
@@ -21,5 +21,5 @@
 - `frontend/brand/brand.css` — Synced copy
 
 ## Sync
-Both `think-fast` (Nova Labs) and `leastgen-hosted` (LeastGen Labs) now have separate brand identities.
+Both `think-fast` (LeastGen Labs) and `leastgen-hosted` (LeastGen Labs) now have separate brand identities.
 

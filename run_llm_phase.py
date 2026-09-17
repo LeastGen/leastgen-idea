@@ -366,6 +366,11 @@ def main():
         print(f"ERROR: unknown phase '{phase}'. Valid: {', '.join(sorted(PHASE_CONFIG.keys()))}", file=sys.stderr)
         sys.exit(1)
 
+    if not (SKILL_DIR / "scripts" / "run.py").is_file():
+        print("ERROR: ResearchStudio engine not found at researchstudio/.", file=sys.stderr)
+        print("Fetch it with: bash scripts/fetch_engine.sh", file=sys.stderr)
+        sys.exit(1)
+
     cfg = PHASE_CONFIG[phase]
     prompt_path = PROMPT_DIR / cfg["prompt"]
     output_path = run_dir / cfg["output"]

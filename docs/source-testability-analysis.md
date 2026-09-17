@@ -1,6 +1,6 @@
 # Source Code Testability Analysis
 
-**Project:** IdeaFlow / Nova Labs (`/Users/khalid/Desktop-fast/` → `/Users/khalid/Desktop/think-fast/`)
+**Project:** IdeaFlow / LeastGen Labs (`/Users/khalid/Desktop-fast/` → `/Users/khalid/Desktop/think-fast/`)
 **Date:** 2026-09-16
 **Purpose:** Supplementary data for t6 (router deep-dive) and t7 (security audit)
 **Scope:** Five backend modules (`auth.py`, `billing.py`, `pipeline.py`, `database.py`, `scoop.py`) + `frontend/app.js`
