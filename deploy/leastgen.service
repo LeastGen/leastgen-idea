@@ -1,6 +1,6 @@
 [Unit]
 Description=LeastGen Labs Production API Server
-Documentation=https://github.com/KhalidAlnujaidi/leastgen
+Documentation=https://github.com/LeastGen/leastgen-idea
 After=network.target network-online.target
 Wants=network-online.target
 

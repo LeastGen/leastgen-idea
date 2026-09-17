@@ -42,8 +42,8 @@ SSH into your ECS instance:
 ssh root@<YOUR_ECS_IP>
 
 # Clone repository or copy project files to server
-git clone https://github.com/KhalidAlnujaidi/leastgen.git /tmp/leastgen
-cd /tmp/leastgen
+git clone https://github.com/LeastGen/leastgen-idea.git /tmp/leastgen-idea
+cd /tmp/leastgen-idea
 
 # Run deployment automation
 sudo bash deploy/alibaba-deploy.sh \

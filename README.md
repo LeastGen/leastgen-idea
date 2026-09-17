@@ -62,15 +62,15 @@ It works in **two modes**:
 ### One-command setup
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KhalidAlnujaidi/leastgen/main/deploy/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LeastGen/leastgen-idea/main/deploy/setup.sh | bash
 ```
 
 ### Manual setup
 
 ```bash
 # Clone the repo
-git clone https://github.com/KhalidAlnujaidi/leastgen.git
-cd leastgen
+git clone https://github.com/LeastGen/leastgen-idea.git
+cd leastgen-idea
 
 # Create virtual environment
 python3 -m venv .venv

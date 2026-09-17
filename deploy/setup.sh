@@ -2,7 +2,7 @@
 # ==============================================================================
 # LeastGen one-command setup (developer / self-host quickstart)
 # Fetched by the README one-liner:
-#   curl -fsSL https://raw.githubusercontent.com/KhalidAlnujaidi/leastgen/main/deploy/setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/LeastGen/leastgen-idea/main/deploy/setup.sh | bash
 #
 # Clones (or updates) the repo, fetches the ResearchStudio engine, creates a
 # venv, installs requirements.txt, and prints next steps. Safe to re-run.
@@ -10,8 +10,8 @@
 # ==============================================================================
 set -euo pipefail
 
-REPO_URL="${LEASTGEN_REPO_URL:-https://github.com/KhalidAlnujaidi/leastgen.git}"
-INSTALL_DIR="${LEASTGEN_DIR:-$HOME/leastgen}"
+REPO_URL="${LEASTGEN_REPO_URL:-https://github.com/LeastGen/leastgen-idea.git}"
+INSTALL_DIR="${LEASTGEN_DIR:-$HOME/leastgen-idea}"
 BRANCH="${LEASTGEN_BRANCH:-main}"
 
 info() { echo "==> $*"; }
