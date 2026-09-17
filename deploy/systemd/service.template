@@ -1,0 +1,52 @@
+[Unit]
+Description={{APP_NAME^}} Labs Production API Server
+Documentation=https://github.com/nova-labs/{{APP_NAME}}
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{APP_USER}}
+Group={{APP_USER}}
+WorkingDirectory={{APP_DIR}}
+Environment="PATH={{APP_DIR}}/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=-/etc/{{APP_NAME}}/{{APP_NAME}}.env
+
+# Process Execution
+ExecStart={{APP_DIR}}/.venv/bin/uvicorn backend.main:app \
+    --host 127.0.0.1 \
+    --port {{APP_PORT}} \
+    --workers {{WORKERS}} \
+    --proxy-headers \
+    --forwarded-allow-ips="*"
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart Policies & Lifecycle
+Restart=always
+RestartSec=5s
+StartLimitIntervalSec=120s
+StartLimitBurst=5
+TimeoutStopSec=30s
+
+# Resource Limits
+LimitNOFILE=65535
+LimitNPROC=4096
+TasksMax=4096
+
+# Security Hardening & Isolation
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadWritePaths={{APP_DIR}}/data {{APP_DIR}}/ideaspark_run {{APP_DIR}}/scoop_runs /var/log/{{APP_NAME}}
+
+# Journal Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier={{APP_NAME}}-api
+
+[Install]
+WantedBy=multi-user.target

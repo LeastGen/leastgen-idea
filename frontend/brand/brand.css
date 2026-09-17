@@ -1,0 +1,53 @@
+/* Nova Labs Research Workflow — Brand Variables */
+/* Research IDEation Platform */
+
+:root {
+  /* ── Colors ───────────────────────────────────────────── */
+  --bg: #08090a;
+  --surface: #0e0f10;
+  --surface2: #141517;
+  --surface3: #1a1b1e;
+  
+  --border: rgba(255, 255, 255, 0.07);
+  --border-light: rgba(255, 255, 255, 0.03);
+  
+  --text: #f0f1f2;
+  --text2: #b0b4bc;
+  --text3: #6b7080;
+  
+  --accent: #5e6ad2;       /* Primary brand color */
+  --accent-hover: #7170ff;
+  --accent-bg: rgba(94, 106, 210, 0.1);
+  
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  
+  --warning: #f2c14e;
+  --warning-bg: rgba(242, 193, 78, 0.1);
+  
+  --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  
+  --info: #5e6ad2;
+  --info-bg: rgba(94, 106, 210, 0.1);
+  
+  /* ── Typography ────────────────────────────────────────── */
+  --font: Inter, system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-code: 'JetBrains Mono', 'Fira Code', 'SF Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  
+  --font-size: 15px;
+  --line-height: 1.5;
+  
+  /* ── Spacing ───────────────────────────────────────────── */
+  --radius: 4px;
+  --radius-lg: 10px;
+  
+  --control-height: 44px;
+  --spacing-unit: 4px;
+  
+  /* ── Brand Identity ────────────────────────────────────── */
+  --brand-name: Nova Labs;
+  --brand-tagline: Research acceleration for serious scientists;
+  --brand-description: Automated research ideation platform
+ 12-phase pipeline for publication-ready research proposals;
+}

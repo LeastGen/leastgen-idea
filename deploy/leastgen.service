@@ -1,0 +1,52 @@
+[Unit]
+Description=LeastGen Labs Production API Server
+Documentation=https://github.com/leastgen/leastgen-hosted
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=leastgen
+Group=leastgen
+WorkingDirectory=/opt/leastgen
+Environment="PATH=/opt/leastgen/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=-/etc/leastgen/leastgen.env
+
+# Process Execution
+ExecStart=/opt/leastgen/.venv/bin/uvicorn backend.main:app \
+    --host 127.0.0.1 \
+    --port 8756 \
+    --workers 2 \
+    --proxy-headers \
+    --forwarded-allow-ips="*"
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart Policies & Lifecycle
+Restart=always
+RestartSec=5s
+StartLimitIntervalSec=120s
+StartLimitBurst=5
+TimeoutStopSec=30s
+
+# Resource Limits
+LimitNOFILE=65535
+LimitNPROC=4096
+TasksMax=4096
+
+# Security Hardening & Isolation
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadWritePaths=/opt/leastgen/data /opt/leastgen/ideaspark_run /opt/leastgen/scoop_runs /opt/leastgen/cache /var/log/leastgen
+
+# Journal Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=leastgen-api
+
+[Install]
+WantedBy=multi-user.target

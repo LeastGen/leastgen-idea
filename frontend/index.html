@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova Labs — Research IDEation Platform</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;510;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<link rel="stylesheet" href="brand/brand.css">
+<link rel="stylesheet" href="/api/ui/style.css">
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     LANDING PAGE (visible when logged out)
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="landing" id="landing">
+
+  <!-- ── Nav ── -->
+  <nav class="landing-nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" onclick="scrollToTop()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>Nova<span class="accent">Labs</span></span>
+      </a>
+      <div class="nav-links" id="nav-links">
+        <a href="#features" class="nav-link" class="nav-link">Features</a>
+        <a href="#pipeline" class="nav-link">Pipeline</a>
+        <a href="#pricing" class="nav-link">Pricing</a>
+        <a href="#" class="nav-link" onclick="showAuth('login')">Sign In</a>
+        <a href="#" class="btn btn-primary btn-sm" onclick="showAuth('signup')">Get Started</a>
+      </div>
+      <div class="nav-right">
+        <button class="nav-mobile-btn" onclick="toggleMobileNav()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">
+        <span>Open Source  ·  MIT Licensed</span>
+      </div>
+      <h1 class="hero-title">Research acceleration<br>for serious scientists<br><span class="accent">Bloomberg Terminal meets Modern Science Dashboard</span></h1>
+      <p class="hero-sub">AI-powered research ideation for any field. Search literature, identify bottlenecks, generate novel candidates, and produce structured proposals with equations — fully automated.</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary btn-lg" onclick="showAuth('signup')">Start Free — No Credit Card</button>
+        <a href="#pipeline" class="btn btn-secondary btn-lg">See How It Works</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-val">~38 min</span>
+          <span class="hero-stat-lbl">Full pipeline time</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-val">0</span>
+          <span class="hero-stat-lbl">Self-hosted runs</span>
+        </div>
+          <span class="hero-stat-val">12</span>
+          <span class="hero-stat-lbl">AI phases</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-val">3</span>
+          <span class="hero-stat-lbl">Literature sources</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Features ── -->
+  <section class="features" id="features">
+    <div class="section-header">
+      <h2>Two modes, one goal: accelerate research</h2>
+      <p class="section-sub">Whether you need a quick novelty check or a full research proposal, IdeaFlow adapts to your workflow.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Scoop-Check</h3>
+        <p>7-step novelty verification in 2-5 minutes. Enter a problem + claimed novelty, get a 5-level verdict with prior-art hits from arXiv, Semantic Scholar, and OpenAlex.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>IdeaSpark Pipeline</h3>
+        <p>12-phase pipeline from a research direction to a complete idea card with methodology, equations, literature grounding, and falsification predictions. 20-40 minutes end-to-end.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📚</div>
+        <h3>Multi-Source Literature</h3>
+        <p>Searches arXiv, Semantic Scholar, OpenAlex, and OpenReview. Full-text PDF fetching and caching for deep analysis of relevant papers.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📐</div>
+        <h3>KaTeX Math Rendering</h3>
+        <p>Equations in the final idea card render beautifully with KaTeX. Export to PDF, DOCX, or Markdown for journal submission.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌍</div>
+        <h3>Field-Agnostic</h3>
+        <p>Works for any discipline: biology, linguistics, sociology, materials science, education, policy, medicine, economics — any research field.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Self-Hosted & Private</h3>
+        <p>Your data stays on your server. Open source (MIT), no vendor lock-in. Deploy on your own infrastructure with one command.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Pipeline Visualization ── -->
+  <section class="pipeline-viz" id="pipeline">
+    <div class="section-header">
+      <h2>The 12-Phase Pipeline</h2>
+      <p class="section-sub">From a research direction to a publication-ready idea card — fully automated.</p>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-phase"><span class="phase-num">01</span><span class="phase-label">Literature Search</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">02</span><span class="phase-label">Full-Text Fetch</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">03</span><span class="phase-label">Bottleneck ID</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">04</span><span class="phase-label">Gap × Pattern</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">05</span><span class="phase-label">Candidate Gen</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">06</span><span class="phase-label">Coherence Trace</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">07</span><span class="phase-label">Collision Check</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">08</span><span class="phase-label">5-Check Audit</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">09</span><span class="phase-label">Revision</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">10</span><span class="phase-label">Skeleton</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">11</span><span class="phase-label">Prose Fill</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-phase"><span class="phase-num">12</span><span class="phase-label">Idea Card</span></div>
+    </div>
+    <p class="pipeline-note">Total: ~38 min depending on model and pipeline complexity.</p>
+  </section>
+
+  <!-- ── Pricing ── -->
+  <section class="pricing" id="pricing">
+    <div class="section-header">
+      <h2>Simple pricing</h2>
+      <p class="section-sub">Start free. Upgrade when you need more.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-name">Free (Hosted)</div>
+        <div class="pricing-price">$0<span>/mo</span></div>
+        <ul class="pricing-features">
+          <li>10 runs/month</li>
+          <li>Scoop-Check novelty verification</li>
+          <li>IdeaSpark full pipeline</li>
+          <li>Web UI access</li>
+          <li>Markdown export</li>
+        </ul>
+        <button class="btn btn-secondary pricing-btn" onclick="showAuth('signup')">Get Started</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-badge">POPULAR</div>
+        <div class="pricing-name">Pro Monthly (Hosted)</div>
+        <div class="pricing-price">$29<span>/mo</span></div>
+        <ul class="pricing-features">
+          <li>Unlimited runs</li>
+          <li>PDF & DOCX export</li>
+          <li>Priority support</li>
+          <li>API access</li>
+          <li>Team sharing (coming soon)</li>
+        </ul>
+        <button class="btn btn-primary pricing-btn" onclick="showAuth('signup')">Subscribe</button>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-name">Pro Yearly (Hosted)</div>
+        <div class="pricing-price">$290<span>/yr</span></div>
+        <ul class="pricing-features">
+          <li>Unlimited runs</li>
+          <li>PDF & DOCX export</li>
+          <li>Priority support</li>
+          <li>API access</li>
+          <li>2 months free</li>
+        </ul>
+        <button class="btn btn-secondary pricing-btn" onclick="showAuth('signup')">Subscribe</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer class="landing-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>IdeaFlow</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/KhalidAlnujaidi/open-research" target="_blank" rel="noopener">GitHub</a>
+        <a href="LICENSE">MIT License</a>
+      </div>
+      <div class="footer-copy">© 2026 IdeaFlow. Released under the MIT License.</div>
+    </div>
+  </footer>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     AUTH OVERLAY
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <span>Nova<span class="accent">Labs</span></span>
+    </div>
+    <p class="auth-subtitle">AI-powered research ideation pipeline</p>
+
+    <form class="auth-form" id="login-form" onsubmit="return doLogin(event)">
+      <h2>Sign in</h2>
+      <div class="input-group">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" placeholder="you@institute.edu" required autocomplete="email" />
+      </div>
+      <div class="input-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" required minlength="6" autocomplete="current-password" />
+      </div>
+      <div class="auth-error" id="login-error"></div>
+      <button type="submit" class="btn btn-primary auth-btn" id="login-btn">Sign In</button>
+      <p class="auth-switch"><span>Don't have an account?</span> <a href="#" onclick="showAuthForm('signup'); return false;">Sign up</a></p>
+    </form>
+
+    <form class="auth-form" id="signup-form" onsubmit="return doSignup(event)" style="display:none">
+      <h2>Create account</h2>
+      <div class="input-group">
+        <label for="signup-name">Name</label>
+        <input type="text" id="signup-name" placeholder="Your name" />
+      </div>
+      <div class="input-group">
+        <label for="signup-email">Email</label>
+        <input type="email" id="signup-email" placeholder="you@institute.edu" required autocomplete="email" />
+      </div>
+      <div class="input-group">
+        <label for="signup-password">Password</label>
+        <input type="password" id="signup-password" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password" />
+      </div>
+      <div class="auth-error" id="signup-error"></div>
+      <button type="submit" class="btn btn-primary auth-btn" id="signup-btn">Create Account</button>
+      <p class="auth-switch"><span>Already have an account?</span> <a href="#" onclick="showAuthForm('login'); return false;">Sign in</a></p>
+      <p class="auth-terms">Free tier: 10 runs/month. No credit card required.</p>
+    </form>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     APP (visible when logged in)
+     ════════════════════════════════════════════════════════════════════ -->
+<div id="app" hidden>
+  <header class="header">
+    <div class="header-l">
+      <a href="/" class="logo" onclick="location.reload()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>Nova<span class="accent">Labs</span></span>
+      </a>
+    </div>
+    <div class="header-r">
+      </div>
+      <div class="user-menu" id="user-menu" hidden>
+        <button class="user-btn" onclick="toggleUserMenu()">
+          <span id="user-name-display">User</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="user-dropdown" id="user-dropdown" hidden>
+          <div class="dropdown-item disabled" id="user-email-display" style="font-size:11px;color:var(--text3);padding:6px 12px;"></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" id="user-runs-display" style="font-size:12px;color:var(--text2);padding:6px 12px;"></div>
+          <div class="dropdown-item" id="user-subscription-display" style="font-size:12px;color:var(--text3);padding:6px 12px;"></div>
+          <div class="dropdown-item" onclick="showBilling()">Upgrade Plan</div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" onclick="doLogout()">Sign Out</div>
+        </div>
+      </div>
+      <span class="led led-on" id="status-led"></span>
+      <span class="status-text">Online</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <nav class="mode-nav">
+      <button class="mode-btn active" data-mode="scoop" onclick="switchMode('scoop')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span>Scoop-Check</span>
+      </button>
+      <button class="mode-btn" data-mode="idea" onclick="switchMode('idea')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        <span>IdeaSpark</span>
+      </button>
+    </nav>
+
+    <section class="mode-panel active" id="panel-scoop">
+      <div class="hero-card">
+        <div class="hero-content">
+          <h2>Novelty Check</h2>
+          <p>Check if your research idea overlaps with existing literature. Enter a problem and novelty claim — we search arXiv, Semantic Scholar, and OpenAlex.</p>
+        </div>
+        <div class="hero-form">
+          <div class="input-group">
+            <label for="scoop-problem">Research Problem</label>
+            <input type="text" id="scoop-problem" placeholder="e.g., efficient LLM inference for long contexts" autocomplete="off" />
+          </div>
+          <div class="input-group">
+            <label for="scoop-novelty">Claimed Novelty</label>
+            <input type="text" id="scoop-novelty" placeholder="e.g., calibrated per-token early-exit stop rule" autocomplete="off" />
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="scoop-btn" onclick="runScoop()">Check Novelty</button>
+            <kbd>⌘⏎</kbd>
+          </div>
+        </div>
+      </div>
+      <div class="scoop-steps-card" id="scoop-progress" hidden>
+        <div class="scoop-steps" id="scoop-steps-bar"></div>
+        <div class="scoop-status" id="scoop-status-text">Initializing...</div>
+      </div>
+      <div class="result-panel" id="scoop-result" hidden></div>
+    </section>
+
+    <section class="mode-panel" id="panel-idea">
+      <div class="hero-card">
+        <div class="hero-content">
+          <h2>Research Pipeline</h2>
+          <p>From a research direction to a complete idea card. The 12-phase pipeline searches literature, identifies bottlenecks, generates candidates, and produces a structured research proposal.</p>
+        </div>
+        <div class="hero-form">
+          <div class="input-group">
+            <label for="idea-query">Research Direction</label>
+            <input type="text" id="idea-query" placeholder="e.g., efficient speculative decoding for multilingual LLM inference" autocomplete="off" />
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="idea-btn" onclick="runPipeline()">Generate Idea</button>
+            <kbd>⏎</kbd>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="stats" id="stats"></div>
+    <div class="pipeline-container" id="pipeline-container" hidden>
+      <div class="stepper-card" id="stepper-card">
+        <div class="stepper-header">
+          <div class="stepper-meta">
+            <span class="stepper-run-title" id="stepper-run-title">Research Pipeline</span>
+            <span class="stepper-status-pill" id="stepper-status-pill">
+              <span class="pulse-dot" id="stepper-pulse-dot" style="display:none;"></span>
+              <span id="stepper-status-text">Initializing...</span>
+            </span>
+            <span class="stepper-timer-badge" id="stepper-total-timer" title="Total pipeline duration">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span id="stepper-total-time-val">0s</span>
+            </span>
+          </div>
+          <div class="stepper-actions">
+            <button class="btn btn-primary btn-sm" id="stepper-resume-btn" onclick="handleResumeClick()" style="display:none;">
+              ▶ Resume Pipeline
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="loadRuns()" title="Refresh status">
+              ↻ Refresh
+            </button>
+          </div>
+        </div>
+        <div class="stepper-track-wrap">
+          <div class="stepper-bar" id="stepper-bar"></div>
+        </div>
+      </div>
+      <div class="result-banner" id="result-banner" hidden>
+        <div class="banner-icon">🎉</div>
+        <div class="banner-content">
+          <h3>Idea Card Generated</h3>
+          <p id="banner-title"></p>
+        </div>
+        <div class="banner-actions">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('idea-card').scrollIntoView({behavior:'smooth'})">View Card</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportCard('pdf')">Export PDF</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportCard('docx')">Export DOCX</button>
+          <button class="btn btn-secondary btn-sm" onclick="scrollToForm()">New Query</button>
+        </div>
+      </div>
+      <article class="idea-card" id="idea-card" hidden></article>
+      <div class="running-bar" id="running-bar" hidden>
+        <span class="pulse-dot"></span>
+        <span id="running-msg">Pipeline running...</span>
+      </div>
+      <div class="detail-sections">
+        <details class="detail-section" id="phase-details">
+          <summary>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            <span>Phase Details</span>
+          </summary>
+          <div class="detail-body">
+            <div class="run-tabs" id="run-tabs"></div>
+            <div class="phases-list" id="phases-list"></div>
+          </div>
+        </details>
+        <details class="detail-section" id="history-section">
+          <summary>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Run History</span>
+          </summary>
+          <div class="detail-body" id="history-body"></div>
+        </details>
+      </div>
+    </div>
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity=".3"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </div>
+      <h3>No runs yet</h3>
+      <p>Enter a research direction above to start the pipeline.</p>
+    </div>
+  </main>
+</div>
+
+<!-- Billing Modal -->
+<div class="modal-overlay" id="billing-modal" onclick="if(event.target===this)hideBilling()">
+  <div class="modal-box" style="max-width:620px">
+    <div class="modal-head">
+      <h3>Plans & Pricing</h3>
+      <button class="modal-close" onclick="hideBilling()">&times;</button>
+    </div>
+    <div class="billing-plans" id="billing-plans">
+      <div class="billing-loading">Loading plans...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Artifact Viewer Modal -->
+<div class="modal-overlay" id="artifact-modal" onclick="if(event.target===this)closeArtifactModal()">
+  <div class="modal-box artifact-modal-box">
+    <div class="modal-head">
+      <h3 id="artifact-modal-title">Artifact Preview</h3>
+      <button class="modal-close" onclick="closeArtifactModal()">&times;</button>
+    </div>
+    <div style="display: flex; gap: 8px; margin: 10px 0; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+      <span id="artifact-modal-meta" style="font-size: 11px; color: var(--text3); font-family: var(--font-mono);"></span>
+      <a id="artifact-modal-download" class="btn btn-secondary btn-sm" href="#" download target="_blank">Download File</a>
+    </div>
+    <div class="modal-body" style="padding: 0;">
+      <pre class="artifact-content-pre" id="artifact-modal-content">Loading...</pre>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modal-title">Details</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body"><pre id="modal-content"></pre></div>
+  </div>
+</div>
+
+<script src="/api/ui/app.js"></script>
+</body>
+</html>

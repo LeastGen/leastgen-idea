@@ -1,0 +1,1 @@
+# IdeaFlow Backend — FastAPI server for the IdeaSpark research pipeline

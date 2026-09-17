@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.production.example
+.kinox/
+
+# Runtime
+ideaspark_run/
+scoop_runs/
+cache/
+
+# Local SQLite databases (live state, never commit)
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Submodule / vendored upstream (tracked separately, do not embed)
+researchstudio/
+
+# Session / agent runtime state (local only, never commit)
+.agent-teams/
+.mnemon/
+.worktrees/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
