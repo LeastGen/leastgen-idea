@@ -470,7 +470,7 @@ OPENROUTER_API_KEY=sk-or-v1-REPLACE_WITH_LIVE_KEY
 
 # ── Tap Payment Gateway ───────────────────────────────────────────────────────
 TAP_API_KEY=sk_live_REPLACE_WITH_TAP_KEY
-TAP_MERCHANT_ID=599424
+TAP_MERCHANT_ID=REPLACE_WITH_TAP_MERCHANT_ID
 TAP_WEBHOOK_SECRET=REPLACE_WITH_TAP_WEBHOOK_SECRET
 TAP_POST_URL=http://localhost:${APP_PORT}/api/billing/webhook
 

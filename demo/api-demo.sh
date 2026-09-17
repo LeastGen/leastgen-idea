@@ -243,6 +243,7 @@ section_6() {
   local token="${JWT_TOKEN:-}"
   if [[ -z "$token" && "$DRY_RUN" == false ]]; then
     local auth_resp
+    # NOTE: dummy demo-only credentials for local demo script — not real accounts
     auth_resp=$(curl -s -X POST "$BASE_URL/api/auth/login" \
       -H "Content-Type: application/json" \
       -d '{"email":"demo@leastgen.com","password":"password123"}' 2>/dev/null)
