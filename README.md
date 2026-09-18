@@ -1,11 +1,11 @@
-<img alt="LeastGen Labs — research ideation platform" src="docs/assets/hero-ui.jpg" width="100%">
-
-![LeastGen UI tour](docs/assets/demo.gif)
+<p align="center">
+  <img alt="LeastGen app — idea input with novelty check and 12-phase research pipeline" src="docs/assets/hero-app.png" width="100%">
+</p>
 
 <p align="center">
   <strong>From a research direction to a publication-ready idea card — fully automated.</strong>
   <br>
-  <em>A 12-phase AI pipeline that searches the literature, identifies bottlenecks, generates novel candidates, validates novelty, and produces structured research proposals with math notation.</em>
+  <em>A 12-phase AI pipeline: literature search, bottleneck analysis, novel candidates, novelty validation, and structured proposals with math notation.</em>
 </p>
 
 <p align="center">
