@@ -245,7 +245,13 @@ function closeCard() {
 
 async function deleteRun(runId) {
   if (!confirm('Delete run ' + runId + '?')) return;
-  await fetch('/api/pipeline/delete-run', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({run_id: runId})});
+  // Canonical REST delete; the POST /api/pipeline/delete-run alias is kept
+  // server-side for older dashboard builds.
+  const res = await fetch('/api/pipeline/runs/' + encodeURIComponent(runId), {method: 'DELETE'});
+  if (!res.ok) {
+    const legacy = await fetch('/api/pipeline/delete-run', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({run_id: runId})});
+    if (!legacy.ok) { alert('Delete failed: ' + res.status); return; }
+  }
   refresh();
 }
 

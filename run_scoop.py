@@ -279,31 +279,30 @@ def _extract_fallback_queries(problem: str) -> list[str]:
 
 
 def step_2_search(scoop_dir: Path, problem: str) -> list[dict[str, Any]]:
-    """Search literature with multi-query fallback and local run cache inspection."""
+    """Search literature with multi-query fallback.
+
+    Honesty rule: only literature retrieved by THIS run's own searches may be
+    attributed to it. Results from other runs' directories are never adopted
+    (no cross-run contamination), and nothing is synthesized — a zero-paper
+    outcome returns an empty list so downstream verdict logic reports
+    "inconclusive" instead of inventing prior art.
+    """
     print("  Step 2/7: Searching literature (with fallback query handling)...")
 
-    # 1. First check existing run cache in ideaspark_run
-    slug = re.sub(r"[^a-z0-9]+", "-", problem.lower()).strip("-")[:60]
-    existing = list(RUN_DIR.glob(f"{slug}-*"))
-    for d in sorted(existing, key=os.path.getmtime, reverse=True):
-        lit_path = d / "phase0" / "lit_results.json"
-        if lit_path.exists():
-            try:
-                papers = json.loads(lit_path.read_text(encoding="utf-8"))
-                if papers and isinstance(papers, list):
-                    print(f"    Reusing existing run literature: {d.name} ({len(papers)} papers)")
-                    (scoop_dir / "papers.json").write_text(json.dumps(papers, indent=2), encoding="utf-8")
-                    return papers
-            except Exception:
-                pass
-
-    # 2. Execute primary Phase 0 search
+    # Execute primary Phase 0 search
     env = os.environ.copy()
     env["OPENROUTER_API_KEY"] = get_api_key()
 
     search_log = {"primary_query": problem, "fallbacks_tried": [], "chosen_source": None}
 
     def _run_search(query_str: str) -> list[dict[str, Any]]:
+        # Snapshot run dirs existing BEFORE this search so we only ever read
+        # results produced by the search we are about to launch — never a
+        # foreign run's lit_results.json (cross-run contamination fix).
+        try:
+            before = {d.name for d in RUN_DIR.iterdir() if d.is_dir()}
+        except FileNotFoundError:
+            before = set()
         try:
             res = subprocess.run(
                 [str(PROJECT_ROOT / "run_pipeline.sh"), "phase0", query_str],
@@ -313,10 +312,17 @@ def step_2_search(scoop_dir: Path, problem: str) -> list[dict[str, Any]]:
                 cwd=str(PROJECT_ROOT),
                 env=env,
             )
-            # Find the newest created run directory
-            candidates = [d for d in RUN_DIR.iterdir() if d.is_dir() and (d / "phase0" / "lit_results.json").exists()]
-            if candidates:
-                latest = max(candidates, key=os.path.getmtime)
+            # Only consider run directories created by THIS search invocation.
+            try:
+                new_dirs = [
+                    d for d in RUN_DIR.iterdir()
+                    if d.is_dir() and d.name not in before
+                    and (d / "phase0" / "lit_results.json").exists()
+                ]
+            except FileNotFoundError:
+                new_dirs = []
+            if new_dirs:
+                latest = max(new_dirs, key=os.path.getmtime)
                 lit_path = latest / "phase0" / "lit_results.json"
                 papers_list = json.loads(lit_path.read_text(encoding="utf-8"))
                 if isinstance(papers_list, list) and len(papers_list) > 0:
@@ -340,43 +346,12 @@ def step_2_search(scoop_dir: Path, problem: str) -> list[dict[str, Any]]:
                 search_log["chosen_source"] = f"fallback:{f_query}"
                 break
 
-    # 4. Fallback to any recent run in ideaspark_run if network/APIs are completely unavailable
+    # 3. Zero-paper outcome: report honestly — no cached adoption, no
+    # synthesized papers. An empty list flows into step_6_verdict which
+    # returns level 0 / "inconclusive".
     if not papers:
-        print("    Live searches yielded 0 papers. Checking local literature cache...")
-        all_runs = sorted(
-            [d for d in RUN_DIR.iterdir() if d.is_dir() and (d / "phase0" / "lit_results.json").exists()],
-            key=os.path.getmtime,
-            reverse=True,
-        )
-        if all_runs:
-            fallback_run = all_runs[0]
-            try:
-                papers = json.loads((fallback_run / "phase0" / "lit_results.json").read_text(encoding="utf-8"))
-                search_log["chosen_source"] = f"cached_run:{fallback_run.name}"
-                print(f"    Adopted reference papers from local cache: {fallback_run.name} ({len(papers)} papers)")
-            except Exception:
-                pass
-
-    # 5. Last-resort synthetic literature baseline if zero papers could be located anywhere
-    if not papers:
-        print("    Synthesizing domain literature baseline...")
-        papers = [
-            {
-                "title": f"Baseline Foundations for {problem[:60]}",
-                "abstract": f"A comprehensive empirical and architectural study addressing {problem}. Examines standard inductive biases and baseline configurations in the domain.",
-                "year": 2024,
-                "authors": ["Domain Benchmark Group"],
-                "is_synthetic_baseline": True,
-            },
-            {
-                "title": f"Recent Advances in Related Mechanistic Architectures",
-                "abstract": "Proposes alternative approaches in modern research, establishing fundamental boundaries and efficiency trade-offs.",
-                "year": 2023,
-                "authors": ["Reference Research Consortium"],
-                "is_synthetic_baseline": True,
-            },
-        ]
-        search_log["chosen_source"] = "synthetic_baseline"
+        print("    Live searches yielded 0 papers. Returning empty literature set (inconclusive).")
+        search_log["chosen_source"] = "none_zero_papers"
 
     (scoop_dir / "papers.json").write_text(json.dumps(papers, indent=2), encoding="utf-8")
     (scoop_dir / "literature_search_log.json").write_text(json.dumps(search_log, indent=2), encoding="utf-8")
@@ -552,15 +527,55 @@ def step_6_verdict(
     novelty: str,
     axes: list[dict[str, str]],
     candidates: list[dict[str, Any]],
+    zero_papers: bool = False,
 ) -> dict[str, Any]:
-    """Produce structured 5-level verdict with strict schema validation."""
+    """Produce structured verdict with strict schema validation.
+
+    Honesty rule: when zero papers were retrieved (zero_papers=True, or empty
+    candidates with a zero-paper papers.json on disk), return level 0 /
+    "inconclusive" with message "insufficient literature — could not assess
+    novelty". Never issue a real 1-5 novelty verdict without literature.
+    """
     print("  Step 6/7: Producing novelty verdict...")
+
+    papers_path = scoop_dir / "papers.json"
+    if not zero_papers and papers_path.exists():
+        try:
+            stored = json.loads(papers_path.read_text(encoding="utf-8"))
+            if isinstance(stored, list) and len(stored) == 0:
+                zero_papers = True
+        except Exception:
+            pass
+    if not zero_papers and not candidates:
+        # No candidates at all (e.g. triage of an empty set) — check search log.
+        log_path = scoop_dir / "literature_search_log.json"
+        try:
+            log = json.loads(log_path.read_text(encoding="utf-8"))
+            if log.get("chosen_source") == "none_zero_papers":
+                zero_papers = True
+        except Exception:
+            pass
+
+    axis_names = [a.get("name", f"axis_{i}") for i, a in enumerate(axes)]
+
+    if zero_papers:
+        print("    Zero papers retrieved — returning inconclusive verdict.")
+        inconclusive = {
+            "level": 0,
+            "verdict": "inconclusive",
+            "summary": "insufficient literature — could not assess novelty",
+            "per_axis": {aname: "unknown" for aname in axis_names},
+            "recommendation": "inconclusive",
+            "confidence": 0.0,
+            "max_overlap_score": 0,
+        }
+        (scoop_dir / "verdict.json").write_text(json.dumps(inconclusive, indent=2), encoding="utf-8")
+        print("    Verdict: Level 0/5 (inconclusive) — insufficient literature — could not assess novelty")
+        return inconclusive
     candidates_summary = "\n".join([
         f"- #{i+1}: {c['paper'].get('title','?')} (overlap: {c['overlap_score']}/4) — {c.get('notes', '')}"
         for i, c in enumerate(candidates[:5])
     ]) if candidates else "No high-overlap candidates found."
-
-    axis_names = [a.get("name", f"axis_{i}") for i, a in enumerate(axes)]
 
     system = "You are an expert scientific novelty verdict system. Assess novelty on a 1-5 scale. Return ONLY valid JSON."
     user = f"""Research problem: {problem}
@@ -753,7 +768,8 @@ def main():
 
         current_step = 6
         update_status(scoop_dir, "verdict", 6)
-        verdict = step_6_verdict(scoop_dir, problem, novelty, axes, candidates)
+        verdict = step_6_verdict(scoop_dir, problem, novelty, axes, candidates,
+                               zero_papers=(len(papers) == 0))
 
         current_step = 7
         update_status(scoop_dir, "summarizing", 7)

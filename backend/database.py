@@ -27,13 +27,36 @@ _local = threading.local()
 
 
 def _get_conn() -> sqlite3.Connection:
-    """Get a thread-local database connection."""
+    """Get a thread-local database connection.
+
+    Uses WAL + a generous busy_timeout so concurrent writer threads block
+    briefly instead of raising 'database is locked' 500s.
+    """
     if not hasattr(_local, "conn") or _local.conn is None:
-        _local.conn = sqlite3.connect(str(DB_PATH))
+        _local.conn = sqlite3.connect(str(DB_PATH), timeout=30.0, check_same_thread=False)
         _local.conn.row_factory = sqlite3.Row
         _local.conn.execute("PRAGMA journal_mode=WAL")
         _local.conn.execute("PRAGMA foreign_keys=ON")
+        _local.conn.execute("PRAGMA busy_timeout=30000")
+        _local.conn.execute("PRAGMA synchronous=NORMAL")
     return _local.conn
+
+
+def _commit_with_retry(conn: sqlite3.Connection, retries: int = 8, delay: float = 0.05) -> None:
+    """Commit with exponential-backoff retry on 'database is locked'.
+
+    busy_timeout already makes SQLite wait internally; this is a second
+    layer for the narrow commit window under thread contention.
+    """
+    for attempt in range(retries):
+        try:
+            conn.commit()
+            return
+        except sqlite3.OperationalError as e:
+            if "locked" not in str(e).lower() or attempt == retries - 1:
+                raise
+            time.sleep(delay * (2 ** attempt))
+    conn.commit()
 
 
 # ── Schema ──────────────────────────────────────────────────────────────────
@@ -128,7 +151,7 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_pipeline_phases_run ON pipeline_phases(run_id);
     """)
-    conn.commit()
+    _commit_with_retry(conn)
 
 
 # ── User helpers ────────────────────────────────────────────────────────────
@@ -171,7 +194,7 @@ def create_user(email: str, password: str, name: str = "") -> dict[str, Any] | N
             "INSERT INTO users (id, email, name, password_hash, salt) VALUES (?, ?, ?, ?, ?)",
             (user_id, email.lower().strip(), name.strip(), pw_hash, salt),
         )
-        conn.commit()
+        _commit_with_retry(conn)
         return get_user_by_id(user_id)
     except sqlite3.IntegrityError:
         return None
@@ -214,7 +237,7 @@ def update_user(user_id: str, **kwargs) -> dict[str, Any] | None:
     vals = list(updates.values()) + [user_id]
     conn = _get_conn()
     conn.execute(f"UPDATE users SET {sets} WHERE id = ?", vals)
-    conn.commit()
+    _commit_with_retry(conn)
     return get_user_by_id(user_id)
 
 
@@ -222,7 +245,7 @@ def increment_run_count(user_id: str) -> dict[str, Any] | None:
     """Increment the user's run counter. Returns updated user."""
     conn = _get_conn()
     conn.execute("UPDATE users SET runs_used = runs_used + 1, updated_at = datetime('now') WHERE id = ?", (user_id,))
-    conn.commit()
+    _commit_with_retry(conn)
     return get_user_by_id(user_id)
 
 
@@ -245,7 +268,7 @@ def create_run(user_id: str, run_type: str, query: str) -> dict[str, Any]:
         "INSERT INTO runs (id, user_id, run_type, query) VALUES (?, ?, ?, ?)",
         (run_id, user_id, run_type, query),
     )
-    conn.commit()
+    _commit_with_retry(conn)
     return dict(conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone())
 
 
@@ -266,7 +289,7 @@ def complete_run(run_id: str, tokens_used: int = 0, cost: float = 0.0):
         "UPDATE runs SET status = 'complete', tokens_used = ?, cost = ?, completed_at = datetime('now') WHERE id = ?",
         (tokens_used, cost, run_id),
     )
-    conn.commit()
+    _commit_with_retry(conn)
 
 
 # ── API tokens (for programmatic access) ──
@@ -282,7 +305,7 @@ def create_api_token(user_id: str, name: str = "default") -> tuple[str, dict[str
         "INSERT INTO api_tokens (id, user_id, token_hash, name) VALUES (?, ?, ?, ?)",
         (token_id, user_id, token_hash, name),
     )
-    conn.commit()
+    _commit_with_retry(conn)
     return raw_token, dict(conn.execute("SELECT * FROM api_tokens WHERE id = ?", (token_id,)).fetchone())
 
 
@@ -297,7 +320,7 @@ def validate_api_token(raw_token: str) -> dict[str, Any] | None:
         return None
     # Update last used
     conn.execute("UPDATE api_tokens SET last_used_at = datetime('now') WHERE id = ?", (row["id"],))
-    conn.commit()
+    _commit_with_retry(conn)
     return get_user_by_id(row["user_id"])
 
 
@@ -319,7 +342,7 @@ def create_subscription(
            VALUES (?, ?, ?, ?, ?, ?)""",
         (sub_id, user_id, stripe_subscription_id, stripe_price_id, tier, status),
     )
-    conn.commit()
+    _commit_with_retry(conn)
     return dict(conn.execute("SELECT * FROM subscriptions WHERE id = ?", (sub_id,)).fetchone())
 
 
@@ -372,7 +395,7 @@ def init_pipeline_run(run_id: str, query: str, user_id: str = "anonymous") -> di
                VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)""",
             (phase_id, run_id, p["key"], p["num"], p["label"], p["type"], now, now),
         )
-    conn.commit()
+    _commit_with_retry(conn)
     return get_pipeline_run_details(run_id) or {}
 
 
@@ -440,7 +463,8 @@ def update_pipeline_phase(
     conn.execute(
         """UPDATE pipeline_runs
            SET current_phase = ?,
-               status = CASE WHEN ? = 'failed' THEN 'failed'
+               status = CASE WHEN status = 'cancelled' THEN 'cancelled'
+                             WHEN ? = 'failed' THEN 'failed'
                              WHEN ? = 'completed' THEN 'completed'
                              ELSE status END,
                completed_at = CASE WHEN ? IN ('completed', 'failed') THEN ? ELSE completed_at END,
@@ -449,8 +473,44 @@ def update_pipeline_phase(
            WHERE run_id = ?""",
         (phase_key, run_status, run_status, run_status, now, total_sec, now, run_id),
     )
-    conn.commit()
+    _commit_with_retry(conn)
     return get_pipeline_run_details(run_id)
+
+
+def cancel_pipeline_run(run_id: str) -> dict[str, Any] | None:
+    """Mark a pipeline run as cancelled (terminal). Idempotent no-op on terminal runs.
+
+    Returns the run details dict, or None if the run does not exist.
+    Cancelling an already terminal (completed/failed/cancelled) run is a
+    no-op success returning current details.
+    """
+    conn = _get_conn()
+    row = conn.execute("SELECT * FROM pipeline_runs WHERE run_id = ?", (run_id,)).fetchone()
+    if not row:
+        return None
+    now = datetime.now(timezone.utc).isoformat()
+    if (row["status"] or "") in ("completed", "failed", "cancelled"):
+        return get_pipeline_run_details(run_id)
+    conn.execute(
+        """UPDATE pipeline_runs
+           SET status = 'cancelled', completed_at = COALESCE(completed_at, ?), updated_at = ?
+           WHERE run_id = ?""",
+        (now, now, run_id),
+    )
+    _commit_with_retry(conn)
+    return get_pipeline_run_details(run_id)
+
+
+def delete_pipeline_run(run_id: str) -> bool:
+    """Delete a pipeline run and all its phases (FK cascade).
+
+    Returns True when a row existed and was removed, False otherwise.
+    Disk cleanup is the caller's job (router owns RUN_DIR).
+    """
+    conn = _get_conn()
+    cur = conn.execute("DELETE FROM pipeline_runs WHERE run_id = ?", (run_id,))
+    _commit_with_retry(conn)
+    return cur.rowcount > 0
 
 
 def get_pipeline_run_details(run_id: str) -> dict[str, Any] | None:
@@ -480,20 +540,62 @@ def get_pipeline_run_details(run_id: str) -> dict[str, Any] | None:
     return run_dict
 
 
-def list_all_pipeline_runs() -> list[dict[str, Any]]:
-    """List all pipeline runs with their phase map."""
+def list_all_pipeline_runs(limit: int = 20, offset: int = 0, include_phases: bool = False) -> list[dict[str, Any]]:
+    """List pipeline runs, newest first, with pagination.
+
+    List path is a single JOIN query (no per-run detail calls): one row per
+    run with a has_idea_card flag derived from the phase4_card row. Pass
+    include_phases=True (detail path) to attach the full 12-phase map —
+    that issues 1 extra query per run, so the polled list path keeps it off.
+    """
+    limit = max(1, min(int(limit or 20), 100))
+    offset = max(0, int(offset or 0))
     conn = _get_conn()
-    rows = conn.execute("SELECT * FROM pipeline_runs ORDER BY created_at DESC").fetchall()
+    rows = conn.execute(
+        """SELECT r.run_id, r.query, r.status, r.current_phase,
+                  r.total_duration_sec, r.created_at,
+                  MAX(CASE WHEN p.phase_key = 'phase4_card'
+                            AND p.status IN ('complete', 'completed')
+                           THEN 1 ELSE 0 END) AS has_card
+           FROM pipeline_runs r
+           LEFT JOIN pipeline_phases p ON p.run_id = r.run_id
+           GROUP BY r.run_id
+           ORDER BY r.created_at DESC
+           LIMIT ? OFFSET ?""",
+        (limit, offset),
+    ).fetchall()
     results = []
     for r in rows:
-        run_data = get_pipeline_run_details(r["run_id"])
-        if run_data:
-            results.append(run_data)
+        d = dict(r)
+        has_card = bool(d.pop("has_card", 0))
+        d["has_idea_card"] = has_card
+        if include_phases:
+            full = get_pipeline_run_details(d["run_id"])
+            if full:
+                results.append(full)
+        else:
+            d["phases"] = {}
+            results.append(d)
     return results
 
 
+def count_pipeline_runs() -> int:
+    """Total pipeline run count (for list pagination)."""
+    conn = _get_conn()
+    row = conn.execute("SELECT COUNT(*) AS n FROM pipeline_runs").fetchone()
+    return int(row["n"]) if row else 0
+
+
 def sync_run_to_disk_and_db(run_id: str, run_dir: Path) -> dict[str, Any]:
-    """Scan disk artifacts for a run, compute timestamps/durations, and persist to SQLite + state.json."""
+    """Scan disk artifacts for a run, compute timestamps/durations, and persist to SQLite + state.json.
+
+    Live-status preservation: phases currently marked 'running' or 'failed'
+    in the DB keep their live status/started_at/elapsed/error_message —
+    only their artifact lists are refreshed. Disk inference only fills in
+    neutral fields (pending→complete transitions and artifact/timing data
+    for non-live phases). This keeps every GET from clobbering an active
+    worker's progress or wiping a failure's error message.
+    """
     query = ""
     query_file = run_dir / "query.txt"
     if query_file.exists():
@@ -503,6 +605,11 @@ def sync_run_to_disk_and_db(run_id: str, run_dir: Path) -> dict[str, Any]:
 
     # Ensure DB record exists
     init_pipeline_run(run_id, query)
+
+    # Snapshot live DB state so we don't clobber in-flight work.
+    live = get_pipeline_run_details(run_id) or {}
+    live_phases: dict[str, Any] = live.get("phases", {}) if isinstance(live, dict) else {}
+    live_run_status = live.get("status") if isinstance(live, dict) else None
 
     # Inspect disk for each phase
     phases_state = {}
@@ -538,7 +645,7 @@ def sync_run_to_disk_and_db(run_id: str, run_dir: Path) -> dict[str, Any]:
                     })
 
         # Calculate timing estimation from file mtime
-        status = "complete" if is_complete else "pending"
+        disk_status = "complete" if is_complete else "pending"
         elapsed_sec = 0.0
         started_at = None
         completed_at = None
@@ -556,18 +663,54 @@ def sync_run_to_disk_and_db(run_id: str, run_dir: Path) -> dict[str, Any]:
                 elapsed_sec = 2.0
             total_elapsed += elapsed_sec
             latest_phase = key
+
+        # Preserve live worker state: never demote running/failed/awaiting_gate
+        # or clear the live error/started fields via a read-path disk sync.
+        live_rec = live_phases.get(key) or {}
+        live_status = live_rec.get("status")
+        if live_status in ("running", "failed", "awaiting_gate"):
+            status = live_status
+            started_at = live_rec.get("started_at") or started_at
+            if live_status == "running":
+                completed_at = completed_at
+            else:
+                completed_at = live_rec.get("completed_at") or completed_at
+            elapsed_sec = live_rec.get("elapsed_seconds") or elapsed_sec
+            if live_status == "running":
+                # A running worker hasn't finished; count its live elapsed.
+                total_elapsed += float(elapsed_sec or 0.0)
+                latest_phase = key
+            elif live_status in ("failed", "awaiting_gate"):
+                any_failed = True
+                all_done = False
         else:
+            status = disk_status
+            if not is_complete:
+                all_done = False
+
+        if status == "failed":
+            any_failed = True
             all_done = False
 
-        update_pipeline_phase(
-            run_id=run_id,
-            phase_key=key,
-            status=status,
-            started_at=started_at,
-            completed_at=completed_at,
-            elapsed_seconds=elapsed_sec,
-            artifacts=artifacts,
-        )
+        if live_status in ("running", "failed", "awaiting_gate"):
+            # Refresh artifacts/timing only; keep status + error_message.
+            conn = _get_conn()
+            now = datetime.now(timezone.utc).isoformat()
+            conn.execute(
+                "UPDATE pipeline_phases SET artifacts = ?, elapsed_seconds = ?, updated_at = ? WHERE id = ?",
+                (json.dumps(artifacts), elapsed_sec, now, f"{run_id}:{key}"),
+            )
+            _commit_with_retry(conn)
+        else:
+            update_pipeline_phase(
+                run_id=run_id,
+                phase_key=key,
+                status=status,
+                started_at=started_at,
+                completed_at=completed_at,
+                elapsed_seconds=elapsed_sec,
+                artifacts=artifacts,
+            )
 
         phases_state[key] = {
             "key": key,
@@ -580,7 +723,16 @@ def sync_run_to_disk_and_db(run_id: str, run_dir: Path) -> dict[str, Any]:
             "artifacts": artifacts,
         }
 
-    run_status = "completed" if all_done else "running" if any(p["status"] == "complete" for p in phases_state.values()) else "pending"
+    if live_run_status == "cancelled":
+        run_status = "cancelled"
+    elif any_failed:
+        run_status = "failed"
+    elif all_done:
+        run_status = "completed"
+    elif any(p["status"] in ("complete", "running") for p in phases_state.values()):
+        run_status = "running"
+    else:
+        run_status = "pending"
 
     state_json = {
         "run_id": run_id,
@@ -600,5 +752,7 @@ def sync_run_to_disk_and_db(run_id: str, run_dir: Path) -> dict[str, Any]:
     return get_pipeline_run_details(run_id) or state_json
 
 
-# ── Init on import ──
-init_db()
+# ── Init ──
+# NOTE: init_db() is called from the FastAPI lifespan in backend/main.py.
+# Do NOT call it on import — import-time side effects break tests and
+# create the production DB file as a side effect of any import.

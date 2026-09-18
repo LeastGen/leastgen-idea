@@ -375,6 +375,25 @@ def main():
     prompt_path = PROMPT_DIR / cfg["prompt"]
     output_path = run_dir / cfg["output"]
 
+    # Idempotent resume: never re-fire the LLM when a complete phase output
+    # already exists. A previous interrupted write may leave a partial file —
+    # require non-empty valid JSON with the phase's required keys; a `raw`
+    # fallback dict counts as complete (model returned unparseable text and
+    # downstream was told). Use --force to re-run deliberately.
+    if "--force" not in sys.argv and output_path.exists():
+        try:
+            existing = json.loads(output_path.read_text(encoding="utf-8"))
+            if isinstance(existing, dict) and (
+                "raw" in existing or not validate_phase_output(existing, phase)
+            ):
+                print(f"  Skipping Phase {phase}: output already complete ({output_path})")
+                print("  Pass --force to re-run deliberately.")
+                return
+            print(f"  Existing output incomplete "
+                  f"(missing {validate_phase_output(existing, phase)}); re-running.")
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"  Existing output unreadable ({e}); re-running.")
+
     if not prompt_path.exists():
         print(f"ERROR: system prompt not found: {prompt_path}", file=sys.stderr)
         sys.exit(1)

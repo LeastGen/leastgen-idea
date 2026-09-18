@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from backend.schemas.models import PhaseRequest, PhaseResponse, RunStatus
 from backend.engine_guard import require_engine
+from backend.slugify import slugify as _slugify
 
 router = APIRouter()
 
@@ -28,13 +29,7 @@ def _engine_script() -> Path:
     return SKILL_DIR / "scripts" / "run.py"
 
 
-def _slugify(text: str) -> str:
-    return (
-        text.lower()
-        .replace(" ", "-")
-        .encode("ascii", "ignore")
-        .decode()
-    )
+# (slug helper lives in backend.slugify — imported above as _slugify)
 
 
 def _get_venv_python() -> str:

@@ -8,19 +8,27 @@
   --border-light: rgba(255,255,255,0.03);
   --text: #f0f1f2;
   --text2: #b0b4bc;
-  --text3: #6b7080;
+  /* --text3 lightened from #6b7080 (4.04:1 on --bg, fails WCAG AA) to pass ≥4.5:1 */
+  --text3: #9aa0b4;
   --accent: #5e6ad2;
+  /* Text-on-dark accent: --accent (#5e6ad2) is 4.24:1 on --bg and fails as
+     foreground text. Use --accent-text (7.32:1) for text/icons/links on dark
+     surfaces. --accent itself stays as button fill (white on #5e6ad2 = 4.7:1). */
+  --accent-text: #8b93ff;
   --accent-hover: #7170ff;
   --accent-bg: rgba(94,106,210,0.1);
+  --cyan: #22d3ee;
+  --accent-grad: linear-gradient(90deg, #5e6ad2, #22d3ee);
   --green: #10b981;
   --green-bg: rgba(16,185,129,0.1);
   --amber: #f2c14e;
   --amber-bg: rgba(242,193,78,0.1);
   --red: #ef4444;
   --red-bg: rgba(239,68,68,0.1);
-  --radius: 10px;
-  --radius-sm: 6px;
-  --font: var(--font, Inter, system-ui, -apple-system, sans-serif);
+  --radius: 4px;
+  --radius-sm: 2px;
+  --font: Inter, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
 }
 
 /* ── Reset ── */
@@ -34,10 +42,31 @@ body {
   min-height: 100vh;
   line-height: 1.5;
 }
-a { color: var(--accent); text-decoration: none; }
+a { color: var(--accent-text); text-decoration: none; }
 a:hover { text-decoration: underline; }
+/* Visible keyboard focus on all interactive elements (WCAG 2.4.7). */
+:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.btn-primary:focus-visible,
+.mode-btn:focus-visible,
+.stepper-step-node:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+/* Respect users who prefer no motion (vestibular / a11y). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 kbd {
-  font-family: var(--font);
+  font-family: var(--font-mono);
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 4px;
@@ -74,7 +103,7 @@ kbd {
   cursor: pointer;
 }
 .logo svg { width: 18px; height: 18px; }
-.logo .accent { color: var(--accent); }
+.logo .accent { color: var(--accent-text); }
 .header-r {
   display: flex;
   align-items: center;
@@ -92,14 +121,62 @@ kbd {
 }
 .header-link:hover { color: var(--text2); text-decoration: none; }
 .led { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-.led-on { background: var(--green); box-shadow: 0 0 8px rgba(16,185,129,.5); }
+.led-on { background: var(--green); }
 .status-text { font-size: 11px; }
+
+/* ── Guest trial banner ── */
+.trial-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text2);
+  background: var(--accent-bg);
+  border-bottom: 1px solid var(--border);
+}
+.trial-banner[hidden] { display: none; }
 
 /* ── Main Layout ── */
 .main {
   max-width: 900px;
   margin: 0 auto;
   padding: 28px 32px 80px;
+}
+
+/* ── Hidden policy: [hidden] always wins over display:flex/block rules ── */
+[hidden] { display: none !important; }
+
+/* ── Skip link (keyboard-only users) ── */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 2000;
+  padding: 10px 16px;
+  background: var(--surface2);
+  color: var(--text);
+  border: 2px solid var(--accent-text);
+  border-radius: 0 0 4px 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+/* ── Screen-reader-only text ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ── Mode Nav ── */
@@ -135,6 +212,15 @@ kbd {
   box-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
 .mode-btn svg { flex-shrink: 0; }
+/* Time/cost/output hint inside mode tabs (UX: disambiguate Scoop vs Pipeline). */
+.mode-hint {
+  font-weight: 400;
+  opacity: .85;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .mode-hint { display: none; }
+}
 
 /* ── Mode Panels ── */
 .mode-panel { display: none; }
@@ -172,10 +258,10 @@ kbd {
 }
 .input-group input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-bg);
+  border-color: var(--accent-text);
 }
 .input-group input::placeholder { color: var(--text3); }
+.input-hint { font-size: 12px; color: var(--text3); line-height: 1.5; }
 .form-actions {
   display: flex;
   align-items: center;
@@ -209,8 +295,24 @@ kbd {
 }
 .btn-secondary:hover { background: var(--surface3); color: var(--text); }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-lg { min-height: 44px; padding: 0 20px; font-size: 14px; }
 
 /* ── Scoop Steps ── */
+.gate-card {
+  background: var(--surface);
+  border: 1px solid var(--amber);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  animation: fadeSlideIn .3s ease;
+}
+.gate-card[hidden] { display: none; }
+.gate-verdict { font-size: 16px; margin-bottom: 8px; }
+.gate-meta { font-size: 13px; color: var(--text2); display: flex; flex-direction: column; gap: 6px; }
+.gate-hits { font-family: var(--font-mono); font-size: 12px; color: var(--text3); }
+.gate-hint { font-size: 12px; color: var(--text3); }
+.gate-fallback-note { font-size: 12px; color: var(--amber); }
+.gate-actions { display: flex; gap: 10px; margin-top: 14px; }
 .scoop-steps-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -246,12 +348,11 @@ kbd {
   position: relative;
   z-index: 1;
 }
-.scoop-step-dot.done { background: var(--green-bg); color: var(--green); }
+.scoop-step-dot.done { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
 .scoop-step-dot.active {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 0 0 4px var(--accent-bg);
-  animation: pulse 2s infinite;
+  border: 1px solid var(--accent);
 }
 .scoop-step-dot.pending { background: var(--surface2); color: var(--text3); }
 .scoop-step-label {
@@ -320,8 +421,9 @@ kbd {
   flex-wrap: wrap;
 }
 .stepper-run-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text);
   max-width: 420px;
   white-space: nowrap;
@@ -333,7 +435,8 @@ kbd {
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 550;
   background: var(--surface2);
@@ -342,7 +445,7 @@ kbd {
 }
 .stepper-status-pill.running {
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: rgba(94, 106, 210, 0.4);
 }
 .stepper-status-pill.completed {
@@ -367,6 +470,49 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+/* ── Pipeline Progress (%, ETA, Cancel) ── */
+.stepper-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.stepper-progress-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.stepper-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  background: var(--accent-grad);
+  transition: width .4s ease;
+}
+.stepper-progress-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+/* Keyboard-operable stepper nodes: reset <button> styles, keep visual design. */
+button.stepper-step-node {
+  background: none;
+  border: none;
+  font-family: inherit;
+  padding: 0;
+}
+button.stepper-step-node:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button.stepper-step-node[aria-current="step"] .stepper-step-lbl {
+  color: var(--accent-text);
+  font-weight: 600;
 }
 .stepper-track-wrap {
   width: 100%;
@@ -418,34 +564,26 @@ kbd {
   background: var(--surface2);
   color: var(--text3);
 }
+.stepper-step-node { cursor: default; }
 .stepper-step.done {
   background: var(--green);
   border-color: var(--green);
   color: #08090a;
-  box-shadow: 0 0 10px rgba(61, 214, 140, 0.25);
 }
 .stepper-step.active {
   background: var(--accent);
-  border-color: #818cf8;
+  border-color: var(--accent-text);
   color: #fff;
-  animation: pulse-ring 1.8s infinite;
-  box-shadow: 0 0 14px rgba(94, 106, 210, 0.45);
 }
 .stepper-step.fail {
   background: var(--red);
   border-color: var(--red);
   color: #fff;
-  box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
 }
 .stepper-step.pending {
   background: var(--surface2);
   border-color: var(--border);
   color: var(--text3);
-}
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(94, 106, 210, 0.6); }
-  70% { box-shadow: 0 0 0 8px rgba(94, 106, 210, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(94, 106, 210, 0); }
 }
 .stepper-step-lbl {
   font-size: 10px;
@@ -458,7 +596,7 @@ kbd {
   text-overflow: ellipsis;
 }
 .stepper-step-node.active .stepper-step-lbl {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 .stepper-step-node.fail .stepper-step-lbl {
@@ -474,7 +612,7 @@ kbd {
   min-height: 14px;
 }
 .stepper-step-node.active .stepper-step-time {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-bg);
 }
 .stepper-connector {
@@ -487,10 +625,10 @@ kbd {
   transition: background .3s;
 }
 .stepper-connector.done {
-  background: var(--green);
+  background: var(--cyan);
 }
 .stepper-connector.active {
-  background: linear-gradient(90deg, var(--green), var(--accent));
+  background: var(--accent-grad);
 }
 .stepper-connector.fail {
   background: var(--red);
@@ -508,7 +646,6 @@ kbd {
   margin-bottom: 16px;
   animation: fadeSlideIn .3s ease;
 }
-.banner-icon { font-size: 28px; line-height: 1; flex-shrink: 0; }
 .banner-content { flex: 1; min-width: 0; }
 .banner-content h3 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
 .banner-content p { font-size: 12px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -528,7 +665,7 @@ kbd {
 .idea-card h2 {
   font-size: 15px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-text);
   margin-top: 28px;
   margin-bottom: 8px;
   padding-bottom: 6px;
@@ -589,7 +726,6 @@ kbd {
   height: 8px;
   border-radius: 50%;
   background: var(--accent);
-  animation: pulse 1.5s infinite;
 }
 
 /* ── Detail Sections ── */
@@ -638,8 +774,8 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.run-tab:hover { border-color: var(--accent); color: var(--text); }
-.run-tab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.run-tab:hover { border-color: var(--accent-text); color: var(--text); }
+.run-tab.active { border-color: var(--accent-text); color: var(--accent-text); background: var(--accent-bg); }
 .run-tab .check { color: var(--green); margin-left: 4px; }
 
 /* ── Phases List ── */
@@ -657,7 +793,7 @@ kbd {
 }
 .phase-item:hover { border-color: rgba(255,255,255,.12); }
 .phase-item.done { border-left-color: var(--green); }
-.phase-item.active { border-left-color: var(--accent); background: var(--accent-bg); }
+.phase-item.active { border-left-color: var(--accent-text); background: var(--accent-bg); }
 .phase-item.pending { border-left-color: transparent; opacity: .65; }
 .phase-item.fail { border-left-color: var(--red); background: rgba(244, 63, 94, 0.05); }
 
@@ -679,7 +815,7 @@ kbd {
   flex-shrink: 0;
 }
 .phase-dot.done { background: var(--green-bg); color: var(--green); }
-.phase-dot.active { background: var(--accent); color: #fff; animation: pulse 1.5s infinite; }
+.phase-dot.active { background: var(--accent); color: #fff; }
 .phase-dot.pending { background: var(--surface); color: var(--text3); border: 1px solid var(--border); }
 .phase-dot.fail { background: var(--red-bg); color: var(--red); }
 
@@ -713,7 +849,7 @@ kbd {
   border-radius: 4px;
 }
 .phase-timer.running {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-bg);
 }
 .phase-status {
@@ -724,7 +860,7 @@ kbd {
   white-space: nowrap;
 }
 .phase-status.done { background: var(--green-bg); color: var(--green); }
-.phase-status.active { background: var(--accent-bg); color: var(--accent); }
+.phase-status.active { background: var(--accent-bg); color: var(--accent-text); }
 .phase-status.pending { background: var(--surface); color: var(--text3); border: 1px solid var(--border); }
 .phase-status.fail { background: var(--red-bg); color: var(--red); }
 
@@ -752,11 +888,18 @@ kbd {
   cursor: pointer;
   transition: all .15s;
 }
+button.artifact-chip { font-family: var(--font-mono); }
 .artifact-chip:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   color: var(--text);
   background: var(--accent-bg);
   transform: translateY(-1px);
+}
+.artifact-chip .art-ext {
+  font-size: 9px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: .5px;
 }
 .artifact-chip .art-size {
   font-size: 9px;
@@ -771,9 +914,72 @@ kbd {
   font-size: 11px;
   margin-left: 30px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+}
+/* Full-error display: collapsed preview + expandable <details> for the whole message. */
+.phase-error-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.phase-error-text summary {
+  cursor: pointer;
+  list-style: none;
+  display: block;
+}
+.phase-error-text summary::-webkit-details-marker { display: none; }
+.phase-error-text summary:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.phase-error-full {
+  margin-top: 6px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow-y: auto;
+  color: var(--text2);
+}
+.phase-error-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+}
+/* Scoop failure panel: full error + retry CTA so users are never stranded. */
+.scoop-error-panel {
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  animation: fadeSlideIn .3s ease;
+}
+.scoop-error-panel h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--red);
+  margin-bottom: 8px;
+}
+.scoop-error-panel p {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+.scoop-error-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .phase-action-btn {
   padding: 3px 8px;
@@ -786,7 +992,7 @@ kbd {
   transition: all .15s;
 }
 .phase-action-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   color: var(--text);
 }
 
@@ -831,6 +1037,7 @@ kbd {
 .verdict-5, .verdict-4 { color: var(--green); }
 .verdict-3, .verdict-2 { color: var(--amber); }
 .verdict-1 { color: var(--red); }
+.verdict-0 { color: var(--text3); }
 .verdict-meta { text-align: center; font-size: 13px; color: var(--text3); margin-bottom: 16px; }
 .axis-grid {
   display: grid;
@@ -858,7 +1065,7 @@ kbd {
   gap: 8px;
   align-items: baseline;
 }
-.candidate-score { font-weight: 600; color: var(--accent); white-space: nowrap; min-width: 24px; }
+.candidate-score { font-weight: 600; color: var(--accent-text); white-space: nowrap; min-width: 24px; }
 .candidate-title { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Empty State ── */
@@ -870,6 +1077,26 @@ kbd {
 .empty-icon { margin-bottom: 16px; }
 .empty-state h3 { font-size: 15px; font-weight: 500; margin-bottom: 4px; color: var(--text2); }
 .empty-state p { font-size: 13px; }
+/* Empty-state CTAs: tappable targets, wrap cleanly on narrow screens. */
+.empty-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 16px 0 8px;
+}
+.empty-actions .btn { min-height: 44px; }
+.empty-hint { font-size: 12px; color: var(--text3); }
+
+/* No-results / no-artifacts inline empty blocks (rendered by app.js). */
+.inline-empty {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--text3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.inline-empty .btn { margin-top: 10px; min-height: 44px; }
 
 /* ── Modal ── */
 .modal-overlay {
@@ -932,13 +1159,10 @@ kbd {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .6; }
-}
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+/* NOTE: pulse keyframes removed — terminal has no pulsing indicators; state changes are instant. */
 .spinner {
   display: inline-block;
   width: 14px;
@@ -947,6 +1171,43 @@ kbd {
   border-top-color: transparent;
   border-radius: 50%;
   animation: spin .7s linear infinite;
+}
+
+/* ── KaTeX + prose readability ── */
+/* Display math scrolls horizontally inside the card instead of pushing the
+   page wide; inline math wraps. Prose keeps a comfortable measure. */
+.idea-card .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 12px 4px;
+  margin: 12px 0;
+  -webkit-overflow-scrolling: touch;
+}
+.idea-card .katex-display > .katex {
+  font-size: 1.02em;
+  line-height: 1.5;
+}
+.idea-card .katex {
+  font-size: 1em;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+.idea-card p,
+.idea-card li {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.idea-card img,
+.idea-card table {
+  max-width: 100%;
+}
+.idea-card table {
+  display: block;
+  overflow-x: auto;
+}
+.result-panel .katex-display {
+  overflow-x: auto;
+  padding: 8px 4px;
 }
 
 /* ── Responsive ── */
@@ -963,6 +1224,38 @@ kbd {
   .idea-card { padding: 20px; }
   .header-link span { display: none; }
   .mode-btn { font-size: 12px; padding: 8px 12px; }
+}
+
+/* ── Narrow viewports 360–480px ── */
+/* Cap the stepper to the viewport: the track still scrolls internally for
+   12 phases, but the page itself must never h-scroll. Tappable nodes ≥44px. */
+@media (max-width: 480px) {
+  html, body { overflow-x: clip; }
+  .main { padding: 16px 12px 60px; }
+  .hero-card { padding: 18px 14px; }
+  .form-actions { flex-wrap: wrap; }
+  .form-actions .btn { min-height: 44px; flex: 1 1 auto; }
+  .mode-nav { gap: 4px; }
+  .mode-btn { min-height: 44px; padding: 8px 8px; font-size: 12px; }
+  .stepper-card { padding: 12px 12px; }
+  .stepper-header { flex-direction: column; align-items: stretch; }
+  .stepper-actions { flex-wrap: wrap; }
+  .stepper-actions .btn { min-height: 44px; flex: 1 1 auto; }
+  .stepper-track-wrap { overflow-x: auto; margin: 0 -12px; padding: 0 12px 4px; }
+  .stepper-step-node { min-height: 44px; min-width: 56px; width: 56px; }
+  .stepper-step-lbl { font-size: 9px; max-width: 56px; white-space: normal; line-height: 1.3; }
+  .run-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .run-tab { min-height: 44px; flex-shrink: 0; }
+  .banner-actions { flex-wrap: wrap; }
+  .banner-actions .btn { min-height: 44px; flex: 1 1 auto; }
+  .idea-card { padding: 18px 14px; }
+  .idea-card h1 { font-size: 18px; }
+  .gate-actions { flex-wrap: wrap; }
+  .gate-actions .btn { min-height: 44px; flex: 1 1 auto; }
+  .empty-actions .btn { flex: 1 1 100%; }
+  .artifact-chip { min-height: 44px; }
+  .phase-action-btn { min-height: 44px; padding: 6px 12px; }
+  .history-item { flex-wrap: wrap; gap: 6px; }
 }
 
 /* ── Auth Overlay ── */
@@ -1018,7 +1311,7 @@ kbd {
 }
 .auth-form .input-group input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 .auth-error {
   color: var(--red);
@@ -1061,7 +1354,7 @@ kbd {
   font-family: var(--font);
   transition: border-color .2s;
 }
-.user-btn:hover { border-color: var(--accent); }
+.user-btn:hover { border-color: var(--accent-text); }
 .user-dropdown {
   position: absolute;
   right: 0;
@@ -1103,9 +1396,9 @@ kbd {
   padding: 20px;
   transition: border-color .2s;
 }
-.billing-plan:hover { border-color: var(--accent); }
+.billing-plan:hover { border-color: var(--accent-text); }
 .billing-plan.featured {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   background: var(--accent-bg);
 }
 .billing-plan-name {
@@ -1226,17 +1519,19 @@ kbd {
   border-radius: var(--radius-sm);
   padding: 2px;
 }
+.lang-switch button {
   font-size: 11px;
   font-weight: 600;
   padding: 3px 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: 2px;
   cursor: pointer;
   background: transparent;
   color: var(--text3);
-  font-family: var(--font);
-  transition: all .2s;
+  font-family: var(--font-mono);
+  transition: background .2s, color .2s;
 }
+.lang-switch button.active {
   background: var(--accent);
   color: #fff;
 }
@@ -1256,9 +1551,10 @@ kbd {
   color: var(--text3);
   background: var(--surface2);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 4px;
   padding: 6px 14px;
   margin-bottom: 28px;
+  font-family: var(--font-mono);
 }
 .hero-title {
   font-size: 42px;
@@ -1267,7 +1563,7 @@ kbd {
   margin-bottom: 18px;
   letter-spacing: -.5px;
 }
-.hero-title .accent { color: var(--accent); }
+.hero-title .accent { color: var(--accent-text); }
 .hero-sub {
   font-size: 16px;
   color: var(--text2);
@@ -1291,9 +1587,10 @@ kbd {
 .hero-stat { text-align: center; }
 .hero-stat-val {
   display: block;
+  font-family: var(--font-mono);
   font-size: 28px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--text);
 }
 .hero-stat-lbl {
   font-size: 12px;
@@ -1335,8 +1632,9 @@ kbd {
   padding: 28px;
   transition: border-color .2s;
 }
-.feature-card:hover { border-color: var(--accent); }
-.feature-icon { font-size: 28px; margin-bottom: 12px; }
+.feature-card:hover { border-color: var(--accent-text); }
+.feature-icon { margin-bottom: 12px; color: var(--accent-text); display: flex; }
+.feature-icon svg { width: 22px; height: 22px; }
 .feature-card h3 {
   font-size: 16px;
   font-weight: 600;
@@ -1373,11 +1671,12 @@ kbd {
   font-size: 12px;
   transition: border-color .2s;
 }
-.pipeline-phase:hover { border-color: var(--accent); }
+.pipeline-phase:hover { border-color: var(--accent-text); }
 .phase-num {
+  font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 700;
-  color: var(--accent);
+  font-weight: 500;
+  color: var(--accent-text);
 }
 .phase-label { color: var(--text2); }
 .pipeline-arrow {
@@ -1411,9 +1710,9 @@ kbd {
   position: relative;
   transition: border-color .2s;
 }
-.pricing-card:hover { border-color: var(--accent); }
+.pricing-card:hover { border-color: var(--accent-text); }
 .pricing-card.featured {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   background: var(--accent-bg);
 }
 .pricing-badge {
@@ -1427,7 +1726,7 @@ kbd {
   background: var(--accent);
   color: #fff;
   padding: 3px 12px;
-  border-radius: 10px;
+  border-radius: 2px;
 }
 .pricing-name {
   font-size: 14px;

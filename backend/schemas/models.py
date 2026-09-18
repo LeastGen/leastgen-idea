@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class PhaseRequest(BaseModel):
     """Request body for running a pipeline phase."""
-    query: str = Field(..., description="Research query / idea description")
+    query: str = Field(..., min_length=1, max_length=2000, description="Research query / idea description")
     config: dict = Field(default_factory=dict, description="Optional config overrides")
 
 

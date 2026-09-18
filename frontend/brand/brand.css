@@ -40,7 +40,7 @@
   
   /* ── Spacing ───────────────────────────────────────────── */
   --radius: 4px;
-  --radius-lg: 10px;
+  --radius-sm: 2px;
   
   --control-height: 44px;
   --spacing-unit: 4px;

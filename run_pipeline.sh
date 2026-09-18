@@ -69,15 +69,17 @@ load_env() {
     export NOVELTY_LLM_REASONING_LARGE_CMD="python3 $LLM_BRIDGE --mode reasoning-large"
 }
 
-# ── Slugify a query ─────────────────────────────────────────────────────────
-slugify() {
-    echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//' | head -c 80
-}
+# (legacy shell slugify removed — create_run() uses the backend-parity
+# python one-liner above; single rule lives in backend/slugify.py)
 
 # ── Create run directory ────────────────────────────────────────────────────
+# Run-id prefix uses the same rule as the backend (backend/slugify.py):
+# NFKD-normalize, lowercase, non-[a-z0-9] -> '-', 60-char cap,
+# "research-run" fallback when nothing survives (unicode/empty-safe).
 create_run() {
     local query="$1"
-    local slug="$(slugify "$query")"
+    local slug
+    slug="$(python3 -c 'import re,sys,unicodedata; t=unicodedata.normalize("NFKD",sys.argv[1]).encode("ascii","ignore").decode(); s=re.sub(r"[^a-z0-9]+","-",t.lower()).strip("-"); print((s[:60] if s else "research-run"))' "$query")"
     local run_id="${slug}-$(date +%s | md5sum | head -c 8)"
     local run_dir="$RUN_BASE/$run_id"
     mkdir -p "$run_dir/phase0"
@@ -157,12 +159,15 @@ print(len(ok))
 }
 
 # ── Phase 3.1: Collision check ──────────────────────────────────────────────
+# Candidate preference is strictly scoped to the CURRENT run dir (no
+# cross-run newest-file fallback): revise output > refined > generate output.
 run_collision() {
     local run_id="$1"
     local run_dir="$RUN_BASE/$run_id"
     local candidate=""
 
-    # Find the most recent candidate
+    # Preference order within THIS run only (fixed priority, not mtime):
+    # final (revise path) > refined (coherence) > raw generate output.
     for f in "$run_dir/phase3_revise/final_candidate.json" \
              "$run_dir/phase2_coherence/refined_candidate.json" \
              "$run_dir/phase2_generate/phase2_generate_output.json"; do
@@ -583,10 +588,28 @@ case "${1:-help}" in
         ;;
 
     watch)
+        # Single-instance guard (portable: flock on Linux, mkdir-lock on macOS).
+        # A second `watch` exits instead of double-firing LLM phases.
+        LOCK_DIR="$RUN_BASE/.watch.lockdir"
+        if command -v flock >/dev/null 2>&1; then
+            exec 9>"$RUN_BASE/.watch.lock"
+            if ! flock -n 9; then
+                err "Another 'watch' is already running — exiting."
+                exit 1
+            fi
+        else
+            if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+                err "Another 'watch' is already running — exiting."
+                exit 1
+            fi
+            trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+        fi
         info "Watching for pending pipeline phases..."
         activate_venv
         load_env
         for run_dir in "$RUN_BASE"/*/; do
+            # Skip the lock file itself and non-run entries.
+            [ -f "$run_dir/query.txt" ] || continue
             rid="$(basename "$run_dir")"
             query="$(cat "$run_dir/query.txt" 2>/dev/null || echo '?')"
 

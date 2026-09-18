@@ -295,17 +295,19 @@ async def tap_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Invalid JSON body")
 
     # Verify Tap's hashstring header (HMAC-SHA256, keyed with Secret API Key).
-    # Fail closed when the Secret API Key is not configured.
+    # Fail closed: when the Secret API Key is configured, posted_hash is
+    # always required and must verify; missing or invalid -> 401.
     posted_hash = ""
     for header_name in _HASHSTRING_HEADER_NAMES:
         posted_hash = request.headers.get(header_name, "")
         if posted_hash:
             break
-    if posted_hash:
-        if not _verify_tap_hashstring(body, posted_hash):
-            raise HTTPException(status_code=401, detail="Invalid webhook hashstring")
-    elif not TAP_API_KEY:
+    if not TAP_API_KEY:
         raise HTTPException(status_code=401, detail="Webhook verification not configured")
+    if not posted_hash:
+        raise HTTPException(status_code=401, detail="Missing webhook hashstring")
+    if not _verify_tap_hashstring(body, posted_hash):
+        raise HTTPException(status_code=401, detail="Invalid webhook hashstring")
 
     # Extract charge info
     charge_id = body.get("id", "")

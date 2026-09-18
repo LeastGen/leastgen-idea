@@ -6,9 +6,11 @@ Tokens stored in HTTP-only cookies for the web UI.
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 import jwt
@@ -28,7 +30,48 @@ from backend.database import (
 router = APIRouter()
 
 # ── JWT Config ──────────────────────────────────────────────────────────────
-JWT_SECRET = os.environ.get("OPENRESEARCH_JWT_SECRET", secrets.token_hex(32))
+logger = logging.getLogger(__name__)
+
+_JWT_SECRET_FILE = Path(
+    os.environ.get("OPENRESEARCH_JWT_SECRET_FILE", "data/.jwt_secret")
+)
+
+
+def _load_jwt_secret() -> str:
+    """Load JWT secret from env, else from a persisted file (chmod 600).
+
+    Falls back to generating a new secret, persisting it for reuse across
+    restarts. Logs a warning whenever a fresh secret is generated.
+    """
+    env_secret = os.environ.get("OPENRESEARCH_JWT_SECRET", "")
+    if env_secret:
+        return env_secret
+    try:
+        if _JWT_SECRET_FILE.exists():
+            saved = _JWT_SECRET_FILE.read_text(encoding="utf-8").strip()
+            if saved:
+                return saved
+    except OSError:
+        pass
+    generated = secrets.token_hex(32)
+    try:
+        _JWT_SECRET_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _JWT_SECRET_FILE.write_text(generated, encoding="utf-8")
+        try:
+            os.chmod(_JWT_SECRET_FILE, 0o600)
+        except OSError:
+            pass
+    except OSError:
+        pass
+    logger.warning(
+        "OPENRESEARCH_JWT_SECRET not set — generated an ephemeral JWT secret "
+        "(persisted to %s). Set OPENRESEARCH_JWT_SECRET in production.",
+        _JWT_SECRET_FILE,
+    )
+    return generated
+
+
+JWT_SECRET = _load_jwt_secret()
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 72
 
@@ -36,19 +79,44 @@ JWT_EXPIRY_HOURS = 72
 
 
 class SignupRequest(BaseModel):
-    email: str = Field(..., description="User email")
+    email: EmailStr = Field(..., description="User email")
     password: str = Field(..., min_length=6, description="Password (min 6 chars)")
     name: str = Field(default="", description="Display name")
 
 
 class LoginRequest(BaseModel):
-    email: str = Field(..., description="User email")
+    email: EmailStr = Field(..., description="User email")
     password: str = Field(..., description="User password")
+
+
+class PublicUser(BaseModel):
+    id: str
+    email: str
+    name: str
+    subscription_tier: str = "free"
+    subscription_status: str = "active"
+    runs_used: int = 0
+    runs_limit: int = 10
+    created_at: str = ""
+
+
+def public_user(user: dict[str, Any]) -> dict[str, Any]:
+    """Build a safe public user dict — never expose password_hash/salt."""
+    return {
+        "id": user.get("id", ""),
+        "email": user.get("email", ""),
+        "name": user.get("name", ""),
+        "subscription_tier": user.get("subscription_tier", "free"),
+        "subscription_status": user.get("subscription_status", "active"),
+        "runs_used": user.get("runs_used", 0),
+        "runs_limit": user.get("runs_limit", 10),
+        "created_at": user.get("created_at", ""),
+    }
 
 
 class AuthResponse(BaseModel):
     token: str
-    user: dict[str, Any]
+    user: PublicUser
 
 
 class UserProfile(BaseModel):
@@ -150,7 +218,7 @@ async def signup(req: SignupRequest, response: Response):
         max_age=JWT_EXPIRY_HOURS * 3600,
         secure=False,  # Set True in production with HTTPS
     )
-    return AuthResponse(token=token, user=user)
+    return AuthResponse(token=token, user=PublicUser(**public_user(user)))
 
 
 @router.post("/auth/login", response_model=AuthResponse)
@@ -169,7 +237,7 @@ async def login(req: LoginRequest, response: Response):
         max_age=JWT_EXPIRY_HOURS * 3600,
         secure=False,
     )
-    return AuthResponse(token=token, user=user)
+    return AuthResponse(token=token, user=PublicUser(**public_user(user)))
 
 
 @router.post("/auth/logout")

@@ -11,7 +11,7 @@
 <p align="center">
   <a href="#-quick-start"><img src="https://img.shields.io/badge/Quick_Start-%2308090a?style=for-the-badge" alt="Quick Start"></a>
   <a href="#-pipeline-phases"><img src="https://img.shields.io/badge/Pipeline-%2308090a?style=for-the-badge" alt="Pipeline"></a>
-  <a href="#-scoop-check"><img src="https://img.shields.io/badge/Scoop_Check-%2308090a?style=for-the-badge" alt="Scoop-Check"></a>
+  <a href="#-novelty-gate"><img src="https://img.shields.io/badge/Novelty_Gate-%2308090a?style=for-the-badge" alt="Novelty-Gate"></a>
   <a href="#%EF%B8%8F-architecture"><img src="https://img.shields.io/badge/Architecture-%2308090a?style=for-the-badge" alt="Architecture"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-%2308090a?style=for-the-badge" alt="MIT License"></a>
 </p>
@@ -22,12 +22,14 @@
 
 **LeastGen** is an automated research ideation server. Enter a research direction — any direction, in any field — and it produces a complete, structured research proposal with methodology, equations, literature grounding, and falsification predictions.
 
-It works in **two modes**:
+It works from a single input box:
 
-| Mode | Description | Time |
-|------|-------------|------|
-| **Scoop-Check** | Quick novelty verification — enter a problem + claimed novelty, get a 5-level verdict with prior-art hits | 2–5 min |
-| **LeastGen Pipeline** | Full 12-phase pipeline — from a research direction to a complete idea card with math, methodology, and falsification | 20–40 min |
+- **New idea tab — "Your idea" → Check & build.** One field. Pressing **Check & build** starts a pipeline run: Phase 0 literature search runs first, then an LLM novelty gate scores prior-art overlap. If the idea looks scooped, a gate card appears with **Build anyway** / **Revise idea** — you decide. If it looks fresh, the run proceeds straight into the full 12-phase pipeline (20–40 min).
+- **Build directly tab — skip the check.** Same pipeline, but it starts from a research direction and builds the idea card without the novelty-gate pause.
+
+**Novelty gate rule:** the gate blocks only on an LLM-backed `max_overlap >= 3` (levels 1–2 of the 5-level verdict). If the LLM is unavailable or its output is unusable, the gate fails open (`llm_unavailable`) and the run proceeds — it never blocks on a fallback verdict.
+
+**Trial:** guests get 1 free run total, tracked client-side via `localStorage` (`leastgen_trial_used`). After that, sign in.
 
 **Built on** [Microsoft Research Studio-Idea](https://github.com/microsoft/ResearchStudio/tree/main/ResearchStudio-Idea), an MIT-licensed ideation framework. LeastGen adds a modern web UI, autonomous orchestration, real-time streaming, and a fast novelty pre-check.
 
@@ -39,7 +41,8 @@ It works in **two modes**:
 - **Field-agnostic** — works for any discipline: biology, linguistics, sociology, materials science, education, computer science
 - **Autonomous LLM orchestration** — 7 LLM phases + 6 automated phases, no manual intervention needed
 - **Real-time web UI** — dark-themed SPA with horizontal stepper, KaTeX math rendering, expandable phase details
-- **Scoop-Check** — 7-step novelty pre-check in 2–5 minutes before committing to a full pipeline
+- **Novelty gate** — LLM-backed overlap check after Phase 0 literature search: blocks only on `max_overlap >= 3`, fails open when the LLM is unavailable; gate card offers **Build anyway** / **Revise idea**
+- **1 free trial run** — guest trial tracked in `localStorage`; sign in afterwards
 - **Multi-source literature search** — arXiv, Semantic Scholar, OpenAlex, OpenReview
 - **Full-text PDF fetching** — automatically retrieves and caches paper PDFs for deep analysis
 - **Collision detection** — checks generated candidates against existing literature before committing
@@ -143,32 +146,34 @@ Phase 4      Skeleton → prose   ─── Build idea card with equations (mixe
 
 <br>
 
-## 🔍 Scoop-Check
+## 🔍 Novelty gate (was: Scoop-Check)
 
-Before committing to a full pipeline, quickly check if your idea overlaps with existing work:
+Every run starts with Phase 0 literature search, then an LLM novelty gate scores prior-art overlap:
 
 ```bash
-curl -X POST http://localhost:8756/api/scoop-check/start \
+# Start a run with the gate (same as the "Check & build" button)
+curl -X POST http://localhost:8756/api/pipeline/start \
   -H "Content-Type: application/json" \
-  -d '{"problem": "efficient LLM inference for long contexts", "novelty": "calibrated per-token early-exit stop rule"}'
+  -d '{"query": "a calibrated per-token early-exit stop rule for efficient LLM inference on long contexts"}'
 
-# Check status
-curl http://localhost:8756/api/scoop-check/<scoop-id>
+# If the gate blocks, the run pauses with status "awaiting_gate".
+# Continue anyway:
+curl -X POST http://localhost:8756/api/pipeline/<run-id>/gate-override
 ```
 
-Or use the UI at `http://localhost:8756/api/ui`.
+Or use the UI at `http://localhost:8756/api/ui`: the gate card shows **Build anyway** / **Revise idea**.
 
-### Scoop-Check steps
+### Gate rule
 
-| Step | What happens |
-|------|-------------|
-| 1 | Decompose novelty into 4 axes (problem, mechanism, insight, domain) |
-| 2 | Search literature via Phase 0 |
-| 3 | Score each paper against the 4 axes |
-| 4 | Identify high-potential candidates (overlap ≥ 2/4) |
-| 5 | Deep-dive analysis into top 5 candidates |
-| 6 | Produce 5-level novelty verdict |
-| 7 | Generate summary with recommendations |
+| max_overlap (LLM-backed) | Level | Gate |
+|--------------------------|-------|------|
+| 4 | 1 | blocked — strong collision |
+| 3 | 2 | blocked — revision advised |
+| 2 | 3 | pass — proceeds |
+| 1 | 4 | pass — proceeds |
+| 0 | 5 | pass — proceeds |
+
+No LLM output → fail open (`llm_unavailable`), never blocks on a fallback verdict. (The standalone `/api/scoop-check/*` endpoints remain for direct novelty queries.)
 
 <br>
 
@@ -245,7 +250,7 @@ Configurable via `~/.kinox/env` or environment variables.
 
 ## 📸 Screenshots
 
-> *The UI is a dark-themed SPA with two modes, a horizontal stepper, and KaTeX-rendered math.*
+> *The UI is a dark-themed SPA with two tabs (New idea → Check & build; Build directly → skip the check), a novelty-gate card (Build anyway / Revise idea), a horizontal stepper, and KaTeX-rendered math.*
 >
 > Visit `http://localhost:8756/api/ui` to see it in action.
 

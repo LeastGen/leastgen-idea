@@ -5,6 +5,7 @@ PDF and DOCX export for idea cards.
 
 from __future__ import annotations
 
+import html
 import io
 import os
 import re
@@ -15,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
-from backend.database import get_user_by_id
+from backend.routers.auth import get_current_user
 
 router = APIRouter()
 
@@ -25,10 +26,26 @@ RUN_DIR = PROJECT_ROOT / "ideaspark_run"
 
 # ── Helpers ──
 
+_RUN_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _validate_run_id(run_id: str) -> str:
+    if not _RUN_ID_RE.match(run_id or ""):
+        raise HTTPException(status_code=400, detail="Invalid run_id")
+    return run_id
+
 
 def _get_card_path(run_id: str) -> Path | None:
     """Get the path to an idea card markdown file."""
-    card = RUN_DIR / run_id / "phase4" / "idea.std.en.md"
+    _validate_run_id(run_id)
+    card = (RUN_DIR / run_id / "phase4" / "idea.std.en.md")
+    try:
+        resolved = card.resolve()
+        base = RUN_DIR.resolve()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid run_id")
+    if resolved != base and base not in resolved.parents:
+        raise HTTPException(status_code=400, detail="Invalid run_id")
     if card.exists():
         return card
     return None
@@ -82,8 +99,19 @@ def _md_to_html(md: str) -> str:
 # ── Routes ──
 
 
+def _sanitize_pdf_text(text: str) -> str:
+    """Escape text for reportlab Paragraph (paraparser XML).
+
+    Raw ``&``, ``<``, ``>`` in markdown crash the PDF build with a
+    paraparser error; escape them and strip control chars so export
+    never 500s on card content.
+    """
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+    return html.escape(text, quote=False)
+
+
 @router.get("/export/{run_id}/pdf")
-async def export_pdf(run_id: str):
+async def export_pdf(run_id: str, user: dict = Depends(get_current_user)):
     """Export an idea card as PDF."""
     card_path = _get_card_path(run_id)
     if not card_path:
@@ -121,15 +149,15 @@ async def export_pdf(run_id: str):
         if not line:
             story.append(Spacer(1, 4))
         elif line.startswith("# "):
-            story.append(Paragraph(line[2:], title_style))
+            story.append(Paragraph(_sanitize_pdf_text(line[2:]), title_style))
         elif line.startswith("## "):
-            story.append(Paragraph(line[3:], h1_style))
+            story.append(Paragraph(_sanitize_pdf_text(line[3:]), h1_style))
         elif line.startswith("### "):
-            story.append(Paragraph(line[4:], h2_style))
+            story.append(Paragraph(_sanitize_pdf_text(line[4:]), h2_style))
         elif line.startswith("- "):
-            story.append(Paragraph(f"• {line[2:]}", body_style))
+            story.append(Paragraph(f"• {_sanitize_pdf_text(line[2:])}", body_style))
         else:
-            story.append(Paragraph(line, body_style))
+            story.append(Paragraph(_sanitize_pdf_text(line), body_style))
 
     doc.build(story)
     pdf_bytes = buf.getvalue()
@@ -143,7 +171,7 @@ async def export_pdf(run_id: str):
 
 
 @router.get("/export/{run_id}/docx")
-async def export_docx(run_id: str):
+async def export_docx(run_id: str, user: dict = Depends(get_current_user)):
     """Export an idea card as DOCX."""
     card_path = _get_card_path(run_id)
     if not card_path:
@@ -191,7 +219,7 @@ async def export_docx(run_id: str):
 
 
 @router.get("/export/{run_id}/md")
-async def export_md(run_id: str):
+async def export_md(run_id: str, user: dict = Depends(get_current_user)):
     """Export an idea card as raw markdown."""
     card_path = _get_card_path(run_id)
     if not card_path:

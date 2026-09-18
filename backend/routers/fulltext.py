@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import os
 import subprocess
 from pathlib import Path
 
@@ -39,18 +41,23 @@ def _get_venv_python() -> str:
 
 
 def _env_with_bridge() -> dict[str, str]:
-    env = dict(PATH=f"{PROJECT_ROOT / '.venv' / 'bin'}:/usr/bin:/bin")
+    # Start from the full process environment so API keys (OPENROUTER_API_KEY),
+    # proxies (HTTP(S)_PROXY), locale, and other runtime config survive;
+    # then overlay the venv PATH and bridge commands.
+    env = os.environ.copy()
+    env["PATH"] = f"{PROJECT_ROOT / '.venv' / 'bin'}:{env.get('PATH', '/usr/bin:/bin')}"
     llm_bridge = str(PROJECT_ROOT / "llm_bridge.py")
     env["NOVELTY_LLM_CLASSIFY_FAST_CMD"] = f"python3 {llm_bridge} --mode classify-fast"
     env["NOVELTY_LLM_REASONING_LARGE_CMD"] = f"python3 {llm_bridge} --mode reasoning-large"
-    kinox = LEGACY_KEY_FILE
-    if kinox.exists():
-        for line in kinox.read_text().splitlines():
-            if line.startswith("OPENROUTER_API_KEY="):
-                key = line.split("=", 1)[1].strip()
-                if key:
-                    env["OPENROUTER_API_KEY"] = key
-                    break
+    if not env.get("OPENROUTER_API_KEY"):
+        kinox = LEGACY_KEY_FILE
+        if kinox.exists():
+            for line in kinox.read_text().splitlines():
+                if line.startswith("OPENROUTER_API_KEY="):
+                    key = line.split("=", 1)[1].strip()
+                    if key:
+                        env["OPENROUTER_API_KEY"] = key
+                        break
     return env
 
 
@@ -70,13 +77,17 @@ async def run_phase0_fulltext(req: FulltextRequest):
     cmd = [python, str(script), "phase0_fulltext", "--out", str(phase_dir)]
 
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=600,
-            env=_env_with_bridge(),
-            cwd=str(PROJECT_ROOT),
+        # Offload the blocking subprocess (up to 600s) to a worker thread so
+        # the async event loop stays responsive to other requests.
+        result = await asyncio.to_thread(
+            lambda: subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600,
+                env=_env_with_bridge(),
+                cwd=str(PROJECT_ROOT),
+            )
         )
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=504, detail="Full-text fetch timed out (600s)")

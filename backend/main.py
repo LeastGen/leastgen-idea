@@ -57,9 +57,22 @@ app = FastAPI(
 )
 
 # ── CORS ───────────────────────────────────────────────────────────────────
+# Never reflect arbitrary origins with credentials. Origins come from
+# LEASTGEN_CORS_ORIGINS (comma-separated); default is local dev only.
+def _cors_origins() -> list[str]:
+    raw = os.environ.get(
+        "LEASTGEN_CORS_ORIGINS",
+        "http://localhost:8756,http://127.0.0.1:8756",
+    )
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    # Fail closed: drop wildcard when credentials are enabled.
+    origins = [o for o in origins if o != "*"]
+    return origins or ["http://localhost:8756"]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -91,9 +104,10 @@ async def root():
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
+    # Never leak internal exception text to clients.
     return JSONResponse(
         status_code=500,
-        content={"error": str(exc), "detail": "Internal server error"},
+        content={"error": "Internal server error"},
     )
 
 

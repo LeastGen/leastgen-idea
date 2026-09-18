@@ -5,8 +5,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
+
+from backend.routers.auth import get_current_user
 
 router = APIRouter()
 
@@ -50,10 +52,20 @@ async def ui_js():
 
 
 @router.get("/ui/card/{run_id}")
-async def ui_card(run_id: str):
+async def ui_card(run_id: str, user: dict = Depends(get_current_user)):
     """Serve the rendered idea card markdown for a run."""
+    import re
+    if not re.match(r"^[A-Za-z0-9_-]+$", run_id or ""):
+        raise HTTPException(status_code=400, detail="Invalid run_id")
     run_dir = PROJECT_ROOT / "ideaspark_run" / run_id
-    card_path = run_dir / "phase4" / "idea.std.en.md"
+    try:
+        resolved_base = (PROJECT_ROOT / "ideaspark_run").resolve()
+        card_path = run_dir / "phase4" / "idea.std.en.md"
+        resolved = card_path.resolve()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid run_id")
+    if resolved != resolved_base and resolved_base not in resolved.parents:
+        raise HTTPException(status_code=400, detail="Invalid run_id")
     if not card_path.exists():
         raise HTTPException(status_code=404, detail="Card not found")
     return HTMLResponse(card_path.read_text(encoding="utf-8"))

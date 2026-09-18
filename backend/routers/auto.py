@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import subprocess
 from pathlib import Path
 
@@ -46,12 +47,16 @@ async def trigger_auto_phase(run_id: str, phase_num: str):
         return {"error": f"Unknown phase: {phase_num}"}
 
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=600,
-            cwd=str(PROJECT_ROOT),
+        # Offload the blocking subprocess (up to 600s) to a worker thread so
+        # the async event loop stays responsive to other requests.
+        result = await asyncio.to_thread(
+            lambda: subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600,
+                cwd=str(PROJECT_ROOT),
+            )
         )
         return {
             "success": result.returncode == 0,

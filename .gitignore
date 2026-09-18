@@ -36,8 +36,15 @@ researchstudio/
 
 # Session / agent runtime state (local only, never commit)
 .agent-teams/
+.dsh/
 .mnemon/
 .worktrees/
+
+# Scratch / review artifacts (local only, never commit)
+Design-a-brand-identity-Design-System/
+docs/assets/verify-*.png
+docs/assets/compare-*.png
+docs/QA_REVIEW_CONSOLIDATED.md
 
 # IDE
 .vscode/
